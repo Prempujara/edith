@@ -1,0 +1,19 @@
+# Dependencies and build outputs
+node_modules/
+.next/
+dist/
+build/
+__pycache__/
+*.py[cod]
+
+# Environment and local tooling files
+.env
+.env.local
+.venv/
+venv/
+
+# Editor and operating-system files
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
