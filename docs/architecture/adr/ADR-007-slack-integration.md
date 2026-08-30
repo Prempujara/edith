@@ -1,4 +1,4 @@
-# ADR-007 — Slack Integration Strategy: Incoming Webhooks
+# ADR-007 — Slack Integration Strategy: Incoming Webhook Adapter
 
 **Author:** Mannan Shah (System Designer & Solutions Architect)  
 **Date:** August 30, 2026  
@@ -12,14 +12,14 @@ EDITH broadcasts task execution results to team Slack channels. We need a low-fr
 ---
 
 ## 2. Decision
-We implement a **Decoupled Event-Driven Slack Adapter (`packages/slack`)** consuming internal domain events (`task.completed`, `task.failed`) and dispatching formatted JSON block messages to a free **Slack Incoming Webhook URL**.
+We implement a **Decoupled Event-Driven Slack Notification Adapter (`packages/slack`)** consuming internal domain events (Task Completion and Failure events) and dispatching formatted message blocks to a zero-cost **Slack Incoming Webhook URL**.
 
 ---
 
-## 3. Reason
-1. **Zero Financial Cost:** Incoming webhooks are a free, standard feature available in all free Slack workspaces.
-2. **Decoupled Isolation:** The adapter listens to domain events asynchronously; a network error or invalid webhook URL will never delay or crash the Orchestrator.
-3. **Simple Configuration:** Configured via a single environment variable (`SLACK_WEBHOOK_URL`). If missing, the adapter safely disables itself without throwing errors.
+## 3. Rationale
+1. **Zero Financial Cost:** Incoming webhooks are a free feature available in standard Slack workspaces.
+2. **Decoupled Isolation:** The adapter listens to domain events asynchronously; a network error or invalid webhook URL will never delay the Orchestrator or cause a successful task to fail.
+3. **Simple Configuration:** Configured via an environment variable (`SLACK_WEBHOOK_URL`). If missing, the adapter safely disables itself without throwing runtime errors.
 
 ---
 

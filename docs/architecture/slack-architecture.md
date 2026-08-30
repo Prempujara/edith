@@ -3,13 +3,13 @@
 **Author:** Mannan Shah (System Designer & Solutions Architect)  
 **Project:** EDITH (Enhanced Distributed Intelligent Task Handler)  
 **Date:** August 30, 2026  
-**Status:** Complete / Proposed Blueprint  
+**Status:** Proposed Specification — Subject to EDITH-000 Approval  
 
 ---
 
 ## 1. Overview
 
-The Slack Integration Architecture defines how EDITH broadcasts task completion and failure alerts to Slack channels using incoming webhooks. The Slack integration is designed as a **decoupled, fire-and-forget event consumer** (`packages/slack`) operating under strict **₹0 budget constraints**.
+The Slack Integration Architecture defines how EDITH broadcasts task completion and failure alerts to Slack channels. The Slack integration is designed as a **decoupled, fire-and-forget event consumer** (`packages/slack`) operating under strict **₹0 budget constraints**.
 
 ---
 
@@ -27,36 +27,36 @@ graph LR
         HttpClient[Async HTTP Webhook Client]
     end
 
-    subgraph External Slack
+    subgraph External Slack Service
         WebhookEndpoint[Slack Incoming Webhook URL]
         SlackChannel[Slack Workspace Channel]
     end
 
-    EventBus -->|task.completed / task.failed| Subscriber
+    EventBus -->|Task Completion / Failure Event| Subscriber
     Subscriber --> Formatter
-    Formatter -->|Formatted JSON Block| HttpClient
+    Formatter -->|Formatted JSON Message Block| HttpClient
     HttpClient -->|Async POST Request| WebhookEndpoint
     WebhookEndpoint --> SlackChannel
 
-    HttpClient -.->|Network Error / Timeout| ExceptionHandler[Catch & Log Warning - Non Blocking]
+    HttpClient -.->|Network Error / Timeout| ExceptionHandler[Catch & Log Warning - Core Task Unaffected]
 ```
 
 ---
 
-## 3. Trigger Conditions & Notification Layout
+## 3. Trigger Conditions & Notification Concept
 
-Slack notifications are triggered exclusively upon terminal task states to minimize channel spam.
+Slack notifications are triggered exclusively upon terminal task states to prevent channel spam.
 
 ### 3.1 Trigger Events
-* **Task Success:** `task.completed` event emitted by Orchestrator.
-* **Task Failure:** `task.failed` event emitted by Orchestrator.
+* **Task Success:** Task Completion Event emitted by Orchestrator.
+* **Task Failure:** Task Failure Event emitted by Orchestrator.
 
-### 3.2 Notification Payload Layout Concept
+### 3.2 Notification Block Concept [PROPOSED]
 
-#### Success Notification Block
+#### Success Notification Block Concept
 ```json
 {
-  "text": "✅ EDITH Task Completed: Fix auth middleware",
+  "text": "✅ EDITH Task Completed",
   "blocks": [
     {
       "type": "header",
@@ -71,31 +71,7 @@ Slack notifications are triggered exclusively upon terminal task states to minim
     },
     {
       "type": "section",
-      "text": { "type": "mrkdwn", "text": "*Summary:*\nFixed import bug in user_service.py. All unit tests passed." }
-    }
-  ]
-}
-```
-
-#### Failure Notification Block
-```json
-{
-  "text": "❌ EDITH Task Failed: Fix auth middleware",
-  "blocks": [
-    {
-      "type": "header",
-      "text": { "type": "plain_text", "text": "❌ Task Execution Failed" }
-    },
-    {
-      "type": "section",
-      "fields": [
-        { "type": "mrkdwn", "text": "*Task ID:*\n9b1deb4d" },
-        { "type": "mrkdwn", "text": "*Status:*\nFAILED" }
-      ]
-    },
-    {
-      "type": "section",
-      "text": { "type": "mrkdwn", "text": "*Error Details:*\nTool 'RUN_TEST' failed with return code 1." }
+      "text": { "type": "mrkdwn", "text": "*Summary:*\nTask completed successfully. All unit tests passed." }
     }
   ]
 }
@@ -105,16 +81,14 @@ Slack notifications are triggered exclusively upon terminal task states to minim
 
 ## 4. Credential Isolation & Environment Boundary
 
-To guarantee security and prevent secret leakage:
-
-1. **Environment Configuration:** The Slack webhook URL is injected strictly via environment variable (`SLACK_WEBHOOK_URL`).
-2. **Fallback / Disabled State:** If `SLACK_WEBHOOK_URL` is empty, missing, or set to placeholder, the `SlackAdapter` disables itself automatically during startup and logs an informational message (`Slack notifications disabled: SLACK_WEBHOOK_URL not configured`).
-3. **No Hardcoded Keys:** Secrets are excluded from source control (`.gitignore` enforces `.env` exclusion).
+1. **Environment Configuration:** The Slack webhook URL is injected strictly via an environment variable (`SLACK_WEBHOOK_URL`).
+2. **Disabled State Handling:** If `SLACK_WEBHOOK_URL` is unconfigured, missing, or set to placeholder, the `SlackAdapter` disables itself automatically during startup and logs an informational warning (`Slack notifications disabled: SLACK_WEBHOOK_URL not configured`).
+3. **Secret Isolation:** Webhook credentials and tokens are excluded from source control (`.gitignore` enforces `.env` exclusion).
 
 ---
 
 ## 5. Failure Isolation & Quality Attributes
 
-* **Non-Blocking Execution:** Slack notifications are dispatched asynchronously (`asyncio.create_task`) outside the main request/response cycle.
-* **Fault Tolerance:** HTTP network timeouts, invalid webhook URLs, or Slack API rate limits are caught cleanly by an internal try-except block. Webhook errors log a warning but **never fail the underlying task**.
-* **Zero-Budget Compliance:** Uses standard Slack Incoming Webhooks (free feature available in all free Slack workspaces). Requires zero paid bot subscriptions.
+* **Non-Blocking Execution:** Slack notifications are dispatched asynchronously outside the main request/response loop.
+* **Fault Isolation:** Network timeouts, invalid webhook URLs, or HTTP 5xx errors from Slack are caught cleanly by an internal exception handler. Webhook errors log a warning but **NEVER cause the core task status to fail**.
+* **Zero-Budget Compliance:** Uses standard Slack Incoming Webhooks (a free feature in standard Slack workspaces). Requires zero paid bot subscriptions.

@@ -3,15 +3,15 @@
 **Author:** Mannan Shah (System Designer & Solutions Architect)  
 **Project:** EDITH (Enhanced Distributed Intelligent Task Handler)  
 **Date:** August 30, 2026  
-**Status:** Complete / Proposed Blueprint  
+**Status:** Proposed Specification — Subject to EDITH-000 Approval  
 
 ---
 
 ## 1. Overview
 
-The EDITH event system enables **decoupled publish-subscribe event processing** within the backend process. Components such as the Orchestrator produce domain events when task state transitions occur, allowing external listeners (Slack notification adapter, voice audio synthesizer, dashboard logger) to consume events asynchronously without blocking execution.
+The EDITH event system provides **decoupled in-process publish-subscribe event processing** within the backend process. Components such as the Orchestrator produce domain events when task state transitions occur, allowing external listeners (Slack notification adapter, voice adapter, dashboard logger) to consume events asynchronously without blocking execution.
 
-> **Contract Rule Disclaimer (Rule 8):** All event structures, field names, and topic names in this document are **PROPOSED** and subject to final contract verification upon approval of **EDITH-000 (Core Specification)**.
+> **Contract Rule Disclaimer (Rule 8):** All event structures, field names, and topic names in this document are **PROPOSED EVENT NAMES — REQUIRES EDITH-000 APPROVAL** and subject to final contract verification upon approval of **EDITH-000 (Core Specification)**.
 
 ---
 
@@ -19,29 +19,29 @@ The EDITH event system enables **decoupled publish-subscribe event processing** 
 
 ```mermaid
 graph TD
-    subgraph Producers [Event Producers]
+    subgraph Event Producers
         API[API Gateway]
         Orch[Orchestrator Engine]
         Agent[Coding Agent]
         Tool[Tool Sandbox]
     end
 
-    subgraph Broker [Internal Event Bus - In-Process]
-        Bus[Async Event Broker - PyPubSub / asyncio]
+    subgraph Internal Event Broker [In-Process asyncio]
+        Bus[In-Process Async Event Publisher]
     end
 
-    subgraph Consumers [Event Subscribers / Observers]
-        Store[TaskStore Logger]
+    subgraph Event Subscribers / Observers
+        Store[Task State Store Logger]
         Dash[Dashboard Telemetry Poller]
         Voice[Voice Output Adapter]
-        Slack[Slack Webhook Adapter]
+        Slack[Slack Notification Adapter]
     end
 
-    API -->|1. Publish task.created| Bus
-    Orch -->|2. Publish task.queued / started| Bus
-    Agent -->|3. Publish agent.assigned| Bus
-    Tool -->|4. Publish tool.executed| Bus
-    Orch -->|5. Publish task.completed / failed| Bus
+    API -->|1. Publish Task Created Event| Bus
+    Orch -->|2. Publish Task Queued / Started Event| Bus
+    Agent -->|3. Publish Agent Assigned Event| Bus
+    Tool -->|4. Publish Tool Executed Event| Bus
+    Orch -->|5. Publish Task Completion / Failure Event| Bus
 
     Bus -->|Notify Listener| Store
     Bus -->|Notify Listener| Dash
@@ -51,21 +51,21 @@ graph TD
 
 ---
 
-## 3. Proposed Event Lifecycle & Catalog [PROPOSED]
+## 3. Proposed Event Catalog [PROPOSED — REQUIRES EDITH-000 APPROVAL]
 
-| Event Topic | Producer | Primary Payload | Primary Consumers |
-| :--- | :--- | :--- | :--- |
-| `task.created` `[PROPOSED]` | API Gateway | `task_id`, `prompt`, `created_at` | TaskStore |
-| `task.queued` `[PROPOSED]` | Orchestrator | `task_id`, `queue_position` | TaskStore, Dashboard |
-| `task.started` `[PROPOSED]` | Orchestrator | `task_id`, `started_at` | TaskStore, Dashboard |
-| `agent.assigned` `[PROPOSED]`| Orchestrator | `task_id`, `agent_name` | TaskStore, Dashboard |
-| `tool.executed` `[PROPOSED]` | Tool Layer | `task_id`, `tool_name`, `stdout`, `exit_code` | Dashboard (Terminal View) |
-| `task.completed` `[PROPOSED]`| Orchestrator | `task_id`, `summary`, `completed_at` | Dashboard, Voice Adapter, Slack Adapter |
-| `task.failed` `[PROPOSED]` | Orchestrator | `task_id`, `error_message`, `failed_at` | Dashboard, Voice Adapter, Slack Adapter |
+| Conceptual Event | Proposed Event Topic | Producer | Primary Payload Concept | Primary Consumers |
+| :--- | :--- | :--- | :--- | :--- |
+| **Task Created Event** | `task.created` `[PROPOSED]` | API Gateway | `task_id`, `prompt`, `created_at` | Task State Store |
+| **Task Queued Event** | `task.queued` `[PROPOSED]` | Orchestrator | `task_id`, `queue_position` | Task State Store, Dashboard |
+| **Task Started Event** | `task.started` `[PROPOSED]` | Orchestrator | `task_id`, `started_at` | Task State Store, Dashboard |
+| **Agent Assigned Event** | `agent.assigned` `[PROPOSED]`| Orchestrator | `task_id`, `agent_name` | Task State Store, Dashboard |
+| **Tool Executed Event** | `tool.executed` `[PROPOSED]` | Tool Layer | `task_id`, `tool_name`, `stdout`, `exit_code` | Dashboard (Terminal Log View) |
+| **Task Completion Event**| `task.completed` `[PROPOSED]`| Orchestrator | `task_id`, `summary`, `completed_at` | Dashboard, Voice Adapter, Slack Adapter |
+| **Task Failure Event** | `task.failed` `[PROPOSED]` | Orchestrator | `task_id`, `error_message`, `failed_at` | Dashboard, Voice Adapter, Slack Adapter |
 
 ---
 
-## 4. Generic Event Payload Structure [PROPOSED]
+## 4. Generic Event Payload Structure [PROPOSED — REQUIRES EDITH-000 APPROVAL]
 
 All domain events inherit from a standard base envelope structure to ensure consistent parsing across consumers:
 
@@ -77,11 +77,11 @@ All domain events inherit from a standard base envelope structure to ensure cons
   "timestamp": "2026-08-30T23:05:12.345Z",
   "payload": {
     "status": "COMPLETED",
-    "summary": "Modified auth_middleware.py to validate bearer token format. All 12 unit tests passed.",
+    "summary": "Modified auth_middleware.py to validate bearer token format. All unit tests passed.",
     "execution_time_seconds": 4.12,
     "tools_used": ["READ_FILE", "WRITE_FILE", "RUN_TEST"]
   },
-  "_contract_status": "PROPOSED - REQUIRES EDITH-000 APPROVAL"
+  "_contract_status": "PROPOSED — REQUIRES EDITH-000 APPROVAL"
 }
 ```
 
@@ -91,14 +91,14 @@ All domain events inherit from a standard base envelope structure to ensure cons
 
 ### 5.1 Dashboard Telemetry
 * Reads events stored in the task's execution event log via the HTTP GET API.
-* Appends `tool.executed` lines to the live terminal stream UI.
+* Appends Tool Executed event details to the live log stream UI.
 
 ### 5.2 Voice Output Adapter (`packages/voice`)
-* Listens specifically for `task.completed` and `task.failed`.
-* Extracts `payload.summary` or `payload.error_message`.
-* Triggers client-side browser speech synthesis (`window.speechSynthesis`) to summarize task resolution aloud.
+* Listens specifically for Task Completion and Failure events.
+* Extracts summary or error message content.
+* Triggers the Text-to-Speech (TTS) adapter (browser-native SpeechSynthesis as a zero-cost MVP option) to summarize task resolution aloud.
 
-### 5.3 Slack Webhook Adapter (`packages/slack`)
-* Listens for terminal events (`task.completed` and `task.failed`).
+### 5.3 Slack Notification Adapter (`packages/slack`)
+* Listens for terminal events (Task Completion and Failure events).
 * Formats markdown blocks for Slack incoming webhooks.
 * Sends HTTP POST requests asynchronously to avoid delaying Orchestrator thread cleanup.

@@ -1,4 +1,4 @@
-# ADR-008 — Authentication Strategy: Deferred for MVP
+# ADR-008 — Authentication Strategy: Deferred for Local MVP
 
 **Author:** Mannan Shah (System Designer & Solutions Architect)  
 **Date:** August 30, 2026  
@@ -12,14 +12,14 @@ Production SaaS applications require user authentication (OAuth2, JWT, Auth0). W
 ---
 
 ## 2. Decision
-We **defer user authentication for the MVP release**. The local REST API gateway operates as an open local interface (`http://localhost:8000`) without mandatory JWT headers.
+We **defer user authentication for the local MVP release**. The local REST API gateway operates as an open local interface (`http://localhost:8000`) without mandatory authentication headers.
 
 ---
 
-## 3. Reason
-1. **Focus on Core SPM Value:** The primary goal of EDITH is multi-agent task execution, tool sandboxing, and live orchestration—not user access control management.
+## 3. Rationale
+1. **Focus on Core SPM Value:** The primary goal of EDITH is multi-agent task execution, controlled tool execution, and live orchestration—not user access control management.
 2. **Eliminates Unnecessary Friction:** Avoids login screen bottlenecks, token expiration bugs, and session state overhead during live college grading presentations.
-3. **Future Extension Boundary:** API routes can easily accept a FastAPI `Depends(get_current_user)` dependency in future sprints if authentication becomes required.
+3. **Future Extension Boundary:** API routes can easily incorporate authentication dependency injection in future sprints if authentication becomes required.
 
 ---
 

@@ -16,7 +16,7 @@ We adopt a **Modular Monolith** architecture pattern hosted within a single Fast
 
 ---
 
-## 3. Reason
+## 3. Rationale
 1. **Low Operational Overhead:** Eliminates the need to configure, manage, and debug distributed service networking, service discovery, or container orchestration (Kubernetes/Docker Swarm).
 2. **Zero Financial Cost:** Runs completely within a single free local Python process without requiring paid cloud hosting or multi-node infrastructure.
 3. **High Development Velocity:** Allows the team of 4 developers to work in a unified monorepo with fast local feedback loops (`uvicorn` hot reloading).
@@ -25,7 +25,7 @@ We adopt a **Modular Monolith** architecture pattern hosted within a single Fast
 ---
 
 ## 4. Alternatives Considered
-* **Traditional Monolith (Unstructured):** Easy to start, but risks turning into a "spaghetti codebase" where Orchestrator, UI, and low-level tools become tightly coupled.
+* **Traditional Monolith (Unstructured):** Easy to start, but risks turning into an unstructured codebase where Orchestrator, UI, and low-level tools become tightly coupled.
 * **Microservices Architecture:** Over-engineered for a college MVP. Introduces network latency, RPC/gRPC overhead, complex distributed tracing, and container deployment headaches without providing value for a local project demo.
 
 ---

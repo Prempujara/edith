@@ -7,19 +7,19 @@
 ---
 
 ## 1. Context
-The Coding Agent formulates software modifications and requests filesystem operations or command executions. Allowing AI agents to execute arbitrary commands on the host machine without sandboxing introduces severe security risks (accidental system file modification, command injection, path traversal).
+The Coding Agent formulates software modifications and requests filesystem operations or command executions. Allowing AI agents to execute arbitrary commands on the host machine without boundary controls introduces security risks (accidental system file modification, command injection, path traversal).
 
 ---
 
 ## 2. Decision
-We establish a mandatory **Tool Execution Sandbox Layer (`apps/backend/tools`)**. The `CodingAgent` is prohibited from calling host system utilities directly; all filesystem reads/writes, git commands, and shell executions MUST be dispatched through validated Tool Layer functions.
+We establish a **Controlled Tool / Repository Execution Boundary (`apps/backend/tools`)**. The `CodingAgent` is prohibited from calling host system utilities directly; all filesystem reads/writes, git commands, and shell executions MUST be dispatched through validated Tool Layer functions enforcing path restrictions, allowed operations, and timeouts.
 
 ---
 
-## 3. Reason
-1. **Security & Workspace Safety:** The Tool Sandbox enforces strict workspace boundary checks (`path.resolve().startswith(workspace_root)`), blocking path traversal attacks (`../../`).
-2. **Execution Timeouts:** Enforces maximum execution timeouts (e.g., 60 seconds) on shell executions (such as `pytest`), preventing frozen agent loops.
-3. **Auditability & Observability:** Captures every tool command argument, stdout, stderr, and exit code to emit `tool.executed` events for dashboard terminal rendering.
+## 3. Rationale
+1. **Security & Workspace Safety:** The Tool Execution Boundary enforces strict workspace checks (`path.resolve().startswith(workspace_root)`), blocking path traversal attempts (`../../`).
+2. **Execution Timeouts:** Enforces maximum execution timeouts on shell executions (such as `pytest`), preventing frozen agent loops.
+3. **Auditability & Observability:** Captures tool command arguments, stdout, stderr, and exit codes to emit events for dashboard log rendering.
 
 ---
 

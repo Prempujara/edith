@@ -12,14 +12,14 @@ EDITH requires state tracking for active tasks, execution steps, logs, and final
 ---
 
 ## 2. Decision
-We adopt an **In-Memory Task Repository (`TaskStore`)** backed by Python thread-safe dictionary structures, hidden behind an abstract interface (`ITaskRepository`).
+We adopt **In-Memory Task State Storage** for the MVP, operating behind a replaceable persistence/repository boundary.
 
 ---
 
-## 3. Reason
+## 3. Rationale
 1. **Zero Infrastructure Overhead:** Eliminates the need to install, configure, migrate, or run database engines (PostgreSQL/Docker) during local setup and college presentations.
-2. **Speed & Simplicity:** Zero database network latency; instant state updates for short polling queries.
-3. **Repository Pattern Protection:** Wrapping `TaskStore` in `ITaskRepository` allows a SQL database (SQLite/PostgreSQL) to be plugged in during post-MVP sprints without refactoring business logic.
+2. **Speed & Simplicity:** Zero database network latency; instant state updates for periodic HTTP polling queries.
+3. **Repository Pattern Protection:** Accessing task state through a persistence abstraction layer allows a SQL database (SQLite/PostgreSQL) to be plugged in during post-MVP sprints without refactoring business logic.
 
 ---
 

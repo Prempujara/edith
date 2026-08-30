@@ -3,19 +3,19 @@
 **Author:** Mannan Shah (System Designer & Solutions Architect)  
 **Project:** EDITH (Enhanced Distributed Intelligent Task Handler)  
 **Date:** August 30, 2026  
-**Status:** Complete / Proposed Baseline  
+**Status:** Proposed Baseline — Subject to EDITH-000 Approval  
 
 ---
 
 ## 1. Executive Summary
 
-This document presents the **Architecture Gap Analysis** for EDITH as part of **EDITH-001 (Sprint 1)**. It establishes the current state of the codebase, identifies missing architectural components, highlights technical and contract risks, documents dependencies on EDITH-000 (Core EDITH Specification), and outlines the recommended minimal architecture direction.
+This document presents the **Architecture Gap Analysis** for EDITH as part of **EDITH-001 (Sprint 1)**. It establishes the actual current state of the codebase, identifies missing architectural components, highlights technical and contract risks, documents dependencies on EDITH-000 (Core EDITH Specification), and outlines the recommended minimal architecture direction.
 
 ---
 
 ## 2. Current Repository State
 
-An inspection of the official repository (`https://github.com/Prempujara/edith`) reveals a structured **monorepo layout** containing placeholder directories and basic documentation shells.
+An inspection of the official repository (`https://github.com/Prempujara/edith`) confirms a structured **monorepo layout** containing placeholder directories and basic documentation shells.
 
 ### Directory Structure Overview
 ```text
@@ -41,14 +41,14 @@ edith/
 
 ## 3. Existing Backend Assessment
 
-* **Framework:** Standardized on **FastAPI** (Python 3.11+ target).
-* **Current State:** Pure placeholder (`apps/backend/README.md`). No active Python source code, routes, models, or entry points exist yet.
-* **Intended Baseline:** FastAPI with standard endpoints (`/`, `/health`, `/docs` Swagger UI).
-* **Missing Baseline Capabilities:**
+* **Framework:** Target framework is **FastAPI** (Python 3.11+).
+* **Actual Repository State:** Placeholder shell (`apps/backend/README.md`). No active Python source code, routes, models, or entry points exist in the repository yet.
+* **Intended Baseline:** FastAPI application with standard health/documentation routes (`/`, `/health`, `/docs`).
+* **Missing Baseline Architectural Capabilities:**
   * Application entrypoint (`main.py`)
-  * Task route handlers (`/api/v1/tasks`)
-  * Event broker / queue implementation
-  * In-memory task repository
+  * Task API route handlers (Task creation and status endpoints — exact endpoint names, paths, versioning, and schemas to be finalized by EDITH-000)
+  * Internal event publication/dispatch mechanism (if required by the approved EDITH event model)
+  * In-memory task state tracking behind a replaceable persistence boundary
   * CORS middleware configuration
   * Exception mapping and error response middleware
 
@@ -56,13 +56,13 @@ edith/
 
 ## 4. Existing Frontend Assessment
 
-* **Framework:** Standardized on **Next.js** (React / TypeScript target).
-* **Current State:** Pure placeholder (`apps/frontend/README.md`). No Next.js application structure (`app/` or `pages/`), components, UI state management, or API clients exist yet.
-* **Missing Baseline Capabilities:**
-  * Task submission form (Text / Voice prompt input)
-  * Realtime or polling task status dashboard
-  * Execution log / telemetry viewer
-  * Voice synthesis/recognition hook wrappers
+* **Framework:** Target framework is **Next.js** (React / TypeScript).
+* **Actual Repository State:** Placeholder shell (`apps/frontend/README.md`). No Next.js application structure (`app/` or `pages/`), components, UI state management, or API clients exist in the repository yet.
+* **Missing Baseline Architectural Capabilities:**
+  * Task submission form (Text / Voice prompt input UI)
+  * Task status dashboard (Configurable periodic polling interface)
+  * Execution log / telemetry visualizer
+  * Client-side speech synthesis and recognition hooks
 
 ---
 
@@ -70,46 +70,46 @@ edith/
 
 * **Current Documentation:** Minimal root `README.md` and package `README.md` shells.
 * **EDITH-000 Specification Status:** **Missing / Unapproved**. No approved specification file exists in `docs/` or `packages/shared`.
-* **Contract Impact:** As mandated by **Rule 8**, all data structures, API endpoints, lifecycle states, and event schemas must be explicitly marked as `PROPOSED / REQUIRES EDITH-000 APPROVAL`.
+* **Contract Impact:** As mandated by **Rule 8**, all data structures, API endpoints, lifecycle states, and event schemas must be explicitly marked as `PROPOSED — REQUIRES EDITH-000 APPROVAL`.
 
 ---
 
 ## 6. Architecture Gap Matrix
 
-| Architectural Subsystem | Current State | Missing Requirements | Impact / Risk |
+| Architectural Subsystem | Current Repository State | Missing Architectural Capabilities | Impact / Risk |
 | :--- | :--- | :--- | :--- |
-| **EDITH API Boundary** | Non-existent | REST endpoints, request validation, CORS rules, API versioning schema | **High** — Blocks frontend-backend integration in Sprint 2 |
-| **Orchestrator** | Non-existent | Task lifecycle manager, routing logic, agent dispatching, error fallback | **High** — Core execution engine undefined |
-| **Coding Agent** | Non-existent | Context builder, LLM prompt pipeline, tool request protocol, execution parser | **High** — Agent boundary must remain isolated from direct repo writes |
-| **Tool / Repo Layer** | Non-existent | Sandboxed execution interface (file read/write, shell execution, git inspection) | **Medium** — Tool safety and rollback missing |
-| **Event System** | Non-existent | Event definitions, publisher/subscriber mechanism, listener bindings | **Medium** — Frontend and Slack updates rely on event propagation |
-| **Voice Adapter** | Non-existent | STT command ingest & TTS audio response adapters | **Medium** — Needs vendor-neutral adapter to satisfy ₹0 budget |
-| **Slack Integration** | Non-existent | Event subscriber to send webhooks/messages to Slack channels | **Low** — Pure output consumer; isolated boundary |
-| **State & Persistence** | Non-existent | Task state store (In-memory vs Database) | **Low** — In-memory state sufficient for MVP |
+| **EDITH API Boundary** | Placeholder README | REST endpoints, payload validation, CORS rules (Paths and schemas: `PROPOSED — REQUIRES EDITH-000 APPROVAL`) | **High** — Blocks frontend-backend integration contract |
+| **Orchestrator** | Non-existent | Task workflow manager, task routing logic, agent dispatching, error boundary | **High** — Core execution engine undefined |
+| **Coding Agent Boundary** | Placeholder README | Agent execution/decision interface and tool-request boundary | **High** — Agent boundary must remain isolated from direct filesystem writes |
+| **Tool / Repo Layer** | Non-existent | Controlled Tool / Repository Execution boundary with validation, allowed-operation restrictions, timeouts, and safety checks | **Medium** — Workspace path safety missing |
+| **Internal Event System** | Non-existent | Internal event publication/dispatch mechanism for decoupled observer updates | **Medium** — Frontend, Slack, and Voice observers require decoupled notifications |
+| **Voice Adapter Boundary** | Placeholder README | Speech-to-Text (STT) and Text-to-Speech (TTS) adapter interfaces | **Medium** — Requires vendor-neutral adapter to satisfy ₹0 budget |
+| **Slack Adapter Boundary** | Placeholder README | Event-driven notification adapter for Slack alerts | **Low** — Pure output consumer; isolated boundary |
+| **State & Persistence** | Non-existent | Task state store (In-memory state for MVP behind a replaceable repository boundary) | **Low** — In-memory state sufficient for MVP |
 
 ---
 
 ## 7. Technical & Project Risks
 
-1. **Risk 1: Over-Engineering / Paid Service Sprawl (Violation of ₹0 Budget)**
-   * *Mitigation:* Explicitly mandate open-source LLM providers (e.g., local Ollama, free-tier OpenRouter/Groq) and browser-native Web Speech API for voice.
+1. **Risk 1: Over-Engineering & Vendor Lock-In (Violation of ₹0 Budget)**
+   * *Mitigation:* The AI/model integration must use a replaceable provider boundary. Prefer local or open-source execution where practical. Free-tier external providers may be evaluated only if necessary, but the core EDITH architecture must not depend on a paid provider or on a specific vendor. *(Example implementation options: Ollama, OpenRouter, Groq — listed as options, not architecture requirements).*
 2. **Risk 2: Coupling Orchestrator to Infrastructure & UI**
-   * *Mitigation:* Strict boundary definition (ADR-003). Orchestrator owns task flow; UI, Slack, and Voice act purely as external observers/adapters.
-3. **Risk 3: Unbounded Code Execution in Tool Layer**
-   * *Mitigation:* Restrict Tool Execution Layer to local sandbox boundaries with standard timeouts and safety checks.
+   * *Mitigation:* Strict boundary definition (ADR-003). Orchestrator owns task workflow; UI, Slack, and Voice act purely as external observers/adapters.
+3. **Risk 3: Uncontrolled Workspace Operations in Tool Layer**
+   * *Mitigation:* Enforce a controlled Tool / Repository Execution boundary with path validation, workspace restrictions, and timeouts.
 4. **Risk 4: Realtime Infrastructure Complexity**
-   * *Mitigation:* Adopt short HTTP polling for MVP dashboard status updates instead of complex WebSockets (ADR-002).
+   * *Mitigation:* Adopt configurable short-interval client HTTP polling for MVP dashboard status updates instead of complex WebSockets (ADR-002).
 
 ---
 
 ## 8. Dependencies on EDITH-000 (Core Specification)
 
-The following items are defined as **PROPOSED** pending formal approval of **EDITH-000**:
+The following items are explicitly marked as **PROPOSED — REQUIRES EDITH-000 APPROVAL**:
 
-* Task Lifecycle States: `CREATED` $\rightarrow$ `QUEUED` $\rightarrow$ `IN_PROGRESS` $\rightarrow$ `COMPLETED` / `FAILED`
-* Event Schema & Event Names (`task.created`, `task.started`, `agent.assigned`, `tool.executed`, `task.completed`, `task.failed`)
-* REST Endpoint Signatures (`POST /api/v1/tasks`, `GET /api/v1/tasks/{id}`, `GET /api/v1/tasks`)
-* JSON Request/Response Payload Structures
+* **Proposed Task Lifecycle:** `CREATED` $\rightarrow$ `QUEUED` $\rightarrow$ `IN_PROGRESS` $\rightarrow$ `COMPLETED` / `FAILED` *(PROPOSED — REQUIRES EDITH-000 APPROVAL)*
+* **Proposed Event Catalog:** `task.created`, `task.started`, `agent.assigned`, `tool.executed`, `task.completed`, `task.failed` *(PROPOSED — REQUIRES EDITH-000 APPROVAL)*
+* **Proposed REST Endpoint Signatures:** `POST /api/v1/tasks`, `GET /api/v1/tasks/{id}`, `GET /api/v1/tasks` *(PROPOSED — REQUIRES EDITH-000 APPROVAL)*
+* **Proposed JSON Request/Response Schemas** *(PROPOSED — REQUIRES EDITH-000 APPROVAL)*
 
 ---
 
@@ -118,7 +118,7 @@ The following items are defined as **PROPOSED** pending formal approval of **EDI
 To achieve Sprint 1 goals while maintaining strict zero-budget compliance:
 
 1. **Architecture Pattern:** **Modular Monolith** hosted within FastAPI backend (`apps/backend`).
-2. **Communication Strategy:** Clean REST API over HTTP with JSON payloads; client-side short polling for task status (every 2 seconds).
-3. **Persistence:** In-Memory Task Repository behind an abstract repository interface (`ITaskRepository`).
-4. **Voice Strategy:** Client-side browser Web Speech API (SpeechRecognition + SpeechSynthesis) with backend fallback interfaces.
-5. **Slack Strategy:** Async HTTP webhook adapter triggered by task events.
+2. **Communication Strategy:** Clean REST API over HTTP with JSON payloads; client-side configurable periodic polling for task status updates.
+3. **Persistence Strategy:** In-memory task state for the MVP behind a replaceable repository boundary.
+4. **Voice Strategy:** Provider-independent STT/TTS adapter interfaces. Client-side browser-native speech capabilities (SpeechRecognition + SpeechSynthesis) may be evaluated as a zero-cost MVP implementation option.
+5. **Slack Strategy:** Event-driven notification adapter using zero-cost incoming webhooks.
