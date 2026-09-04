@@ -12,6 +12,10 @@ __pycache__/
 .venv/
 venv/
 
+# EDITH agent sandbox: scratch space and generated artifacts written by local tools
+outputs/
+work/
+
 # Editor and operating-system files
 .DS_Store
 Thumbs.db
