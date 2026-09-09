@@ -1,4 +1,8 @@
-"""API-level and end-to-end tests via FastAPI's TestClient."""
+"""API-level and end-to-end tests via FastAPI's TestClient.
+
+Runs in offline mock mode (forced by tests/conftest.py), so no network calls
+are made and coding results are produced by the deterministic fake client.
+"""
 
 from __future__ import annotations
 
@@ -39,13 +43,47 @@ def test_list_agents(client):
 
 
 def test_e2e_coding_direct(client):
-    r = client.post("/api/v1/commands", json={"command": "Create a Python factorial program"})
+    # Backward compatibility: the original command still works end to end, but
+    # is now generated through the Coding Service (not a hardcoded method).
+    r = client.post(
+        "/api/v1/commands",
+        json={"command": "Create a Python factorial program"},
+    )
     assert r.status_code == 200
     task = r.json()["task"]
     assert task["status"] == "COMPLETED"
     assert task["assigned_agent"] == "JARVIS"
-    assert task["result"]["kind"] == "coding"
-    assert "def factorial" in task["result"]["code"]
+    result = task["result"]
+    assert result["kind"] == "coding"
+    assert result["language"] == "python"
+    assert isinstance(result["code"], str) and result["code"].strip()
+    assert result["mock"] is True
+
+
+def test_e2e_coding_reverse_string_is_request_specific(client):
+    r = client.post(
+        "/api/v1/commands",
+        json={"command": "Write a Python program to reverse a string"},
+    )
+    assert r.status_code == 200
+    result = r.json()["task"]["result"]
+    assert result["kind"] == "coding"
+    assert result["language"] == "python"
+    # The actual request drives generation; it is not a fixed factorial.
+    assert "reverse a string" in result["code"].lower()
+    assert "def factorial" not in result["code"].lower()
+
+
+def test_e2e_coding_java_request(client):
+    r = client.post(
+        "/api/v1/commands",
+        json={"command": "Create a Java class implementing a stack"},
+    )
+    assert r.status_code == 200
+    result = r.json()["task"]["result"]
+    assert result["kind"] == "coding"
+    assert result["language"] == "java"
+    assert "def factorial" not in result["code"].lower()
 
 
 def test_e2e_delegation_to_friday(client):

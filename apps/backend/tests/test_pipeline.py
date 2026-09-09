@@ -8,36 +8,40 @@ from runtime.registry import build_default_registry
 from runtime.runtime import AgentRuntime
 from runtime.store import TaskStore
 from schemas.enums import AgentName, Capability, EventType, TaskStatus
+from services.coding_service import CodingService
 from services.jarvis_service import JarvisService
+from services.llm.fake import FakeLLMClient
+
+
+def _jarvis() -> JarvisService:
+    """JARVIS wired with an offline, fake-backed Coding Service."""
+    return JarvisService(build_default_registry(), CodingService(FakeLLMClient()))
 
 
 @pytest.fixture
 def runtime():
     registry = build_default_registry()
     store = TaskStore()
-    jarvis = JarvisService(registry)
+    jarvis = JarvisService(registry, CodingService(FakeLLMClient()))
     return AgentRuntime(registry, store, jarvis), store
 
 
 def test_jarvis_classifies_coding_as_own():
-    jarvis = JarvisService(build_default_registry())
-    decision = jarvis.decide("Create a Python factorial program")
+    decision = _jarvis().decide("Create a Python factorial program")
     assert decision.capability == Capability.CODING
     assert decision.handled_directly is True
     assert decision.target_agent == AgentName.JARVIS
 
 
 def test_jarvis_delegates_file_management_to_friday():
-    jarvis = JarvisService(build_default_registry())
-    decision = jarvis.decide("Organize the files in my downloads folder")
+    decision = _jarvis().decide("Organize the files in my downloads folder")
     assert decision.capability == Capability.FILE_MANAGEMENT
     assert decision.handled_directly is False
     assert decision.target_agent == AgentName.FRIDAY
 
 
 def test_jarvis_delegates_computer_control_to_edith():
-    jarvis = JarvisService(build_default_registry())
-    decision = jarvis.decide("Open the browser and navigate to the app")
+    decision = _jarvis().decide("Open the browser and navigate to the app")
     assert decision.capability == Capability.COMPUTER_CONTROL
     assert decision.handled_directly is False
     assert decision.target_agent == AgentName.EDITH
@@ -48,8 +52,12 @@ def test_direct_coding_pipeline(runtime):
     task = rt.submit_command("Create a Python factorial program")
     assert task.status == TaskStatus.COMPLETED
     assert task.assigned_agent == AgentName.JARVIS
+    # Structured coding result, now produced via the Coding Service rather than
+    # a hardcoded method. Validate the shape, not exact generated content.
     assert task.result["kind"] == "coding"
-    assert "def factorial" in task.result["code"]
+    assert task.result["language"] == "python"
+    assert isinstance(task.result["code"], str) and task.result["code"].strip()
+    assert task.result["mock"] is True
     # No child task created for the direct path.
     assert task.parent_task_id is None
 
