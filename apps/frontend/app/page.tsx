@@ -1,65 +1,161 @@
-import Image from "next/image";
+"use client";
+
+import { useEffect, useState } from "react";
+import AgentNetwork from "./components/AgentNetwork";
+import CommandCenter from "./components/CommandCenter";
+import Conversation from "./components/Conversation";
+import CurrentTask from "./components/CurrentTask";
+import ActivityStream from "./components/ActivityStream";
+
+type Agent = {
+  name: string;
+  role: string;
+  status: string;
+  detail: string;
+  color: string;
+};
+
+const agents: Agent[] = [
+  {
+    name: "JARVIS",
+    role: "Reasoning & Coding",
+    status: "THINKING",
+    detail: "Planning task execution",
+    color: "cyan",
+  },
+  {
+    name: "EDITH",
+    role: "Computer & Browser",
+    status: "STANDBY",
+    detail: "Ready for delegated actions",
+    color: "violet",
+  },
+  {
+    name: "FRIDAY",
+    role: "Files & Organization",
+    status: "STANDBY",
+    detail: "Workspace indexed",
+    color: "blue",
+  },
+];
+
+const workflowActivities = [
+  ["19:24:03", "JARVIS", "Analyzed user request", 0],
+  ["19:24:05", "JARVIS", "Planning execution strategy", 10],
+  ["19:24:08", "JARVIS", "Delegating browser task to EDITH", 35],
+  ["19:24:11", "EDITH", "Opening project dashboard", 45],
+  ["19:24:15", "EDITH", "Collecting requested information", 60],
+  ["19:24:18", "FRIDAY", "Preparing result workspace", 75],
+  ["19:24:21", "FRIDAY", "Organizing collected results", 90],
+  ["19:24:24", "JARVIS", "Received final result", 100],
+];
 
 export default function Home() {
+  const [running, setRunning] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [listening, setListening] = useState(false);
+  const [activeAgent, setActiveAgent] = useState("JARVIS");
+
+  useEffect(() => {
+    if (!running) return;
+
+    const timer = setInterval(() => {
+      setProgress((current) => {
+        if (current >= 100) {
+          clearInterval(timer);
+          setRunning(false);
+          setActiveAgent("JARVIS");
+          return 100;
+        }
+
+        if (current < 35) setActiveAgent("JARVIS");
+        else if (current < 75) setActiveAgent("EDITH");
+        else setActiveAgent("FRIDAY");
+
+        return current + 5;
+      });
+    }, 350);
+
+    return () => clearInterval(timer);
+  }, [running]);
+
+  const startDemo = () => {
+    setProgress(0);
+    setActiveAgent("JARVIS");
+    setRunning(true);
+  };
+
+  const delegationMessage =
+    progress < 35
+      ? "JARVIS is analyzing the request"
+      : progress < 75
+        ? "JARVIS → EDITH  •  Delegating browser task"
+        : progress < 100
+          ? "EDITH → FRIDAY  •  Delegating result organization"
+          : "FRIDAY → JARVIS  •  Final result returned";
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
+    <main className="edith-shell">
+      <div className="ambient ambient-one" />
+      <div className="ambient ambient-two" />
+
+      <header className="topbar">
+        <div className="brand">
+          <div className="brand-orb">E</div>
+
+          <div>
+            <div className="brand-name">EDITH</div>
+            <div className="brand-subtitle">
+              ENHANCED DISTRIBUTED INTELLIGENT TASK HANDLER
+            </div>
+          </div>
+        </div>
+
+        <div className="system-status">
+          <span className="status-dot" />
+          ALL SYSTEMS OPERATIONAL
+        </div>
+
+        <div className="topbar-time">19:24:18 IST</div>
+      </header>
+
+      <section className="dashboard">
+        <AgentNetwork
+          agents={agents}
+          activeAgent={activeAgent}
+          running={running}
         />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
+
+        <section className="main-column">
+          <CommandCenter running={running} />
+
+          <Conversation
+            running={running}
+            listening={listening}
+            activeAgent={activeAgent}
+            onToggleVoice={() => setListening((value) => !value)}
+            onRunDemo={startDemo}
+          />
+
+          <div className="lower-grid">
+            <CurrentTask
+              progress={progress}
+              running={running}
+              delegationMessage={delegationMessage}
             />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
-    </div>
+
+            <ActivityStream
+              progress={progress}
+              workflowActivities={workflowActivities}
+            />
+          </div>
+        </section>
+      </section>
+
+      <footer className="footer">
+        <span>EDITH CORE v0.1 • MULTI-AGENT COMMAND SYSTEM</span>
+        <span>JARVIS ↔ EDITH ↔ FRIDAY</span>
+      </footer>
+    </main>
   );
 }
