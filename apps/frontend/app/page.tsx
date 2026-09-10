@@ -33,14 +33,18 @@ const agents: Agent[] = [
     color: "blue",
   },
 ];
-
-const activities = [
-  ["19:24:03", "JARVIS", "Analyzed user request"],
-  ["19:24:05", "JARVIS", "Delegating browser task to EDITH"],
-  ["19:24:07", "EDITH", "Opening project dashboard"],
-  ["19:24:11", "EDITH", "Collecting requested information"],
-  ["19:24:15", "FRIDAY", "Preparing result workspace"],
+const workflowActivities = [
+  ["19:24:03", "JARVIS", "Analyzed user request", 0],
+  ["19:24:05", "JARVIS", "Planning execution strategy", 10],
+  ["19:24:08", "JARVIS", "Delegating browser task to EDITH", 35],
+  ["19:24:11", "EDITH", "Opening project dashboard", 45],
+  ["19:24:15", "EDITH", "Collecting requested information", 60],
+  ["19:24:18", "FRIDAY", "Preparing result workspace", 75],
+  ["19:24:21", "FRIDAY", "Organizing collected results", 90],
+  ["19:24:24", "JARVIS", "Received final result", 100],
 ];
+
+
 
 export default function Home() {
   const [running, setRunning] = useState(false);
@@ -76,7 +80,14 @@ export default function Home() {
     setActiveAgent("JARVIS");
     setRunning(true);
   };
-
+  const delegationMessage =
+    progress < 35
+      ? "JARVIS is analyzing the request"
+      : progress < 75
+        ? "JARVIS → EDITH  •  Delegating browser task"
+        : progress < 100
+          ? "EDITH → FRIDAY  •  Delegating result organization"
+          : "FRIDAY → JARVIS  •  Final result returned";
   return (
     <main className="edith-shell">
       <div className="ambient ambient-one" />
@@ -133,7 +144,7 @@ export default function Home() {
               <span>CPU</span>
               <strong>18%</strong>
             </div>
-            <div>
+           <div>
               <span>MEMORY</span>
               <strong>42%</strong>
             </div>
@@ -239,6 +250,9 @@ export default function Home() {
                 <span>{running ? "Agents executing workflow" : progress === 100 ? "Task completed" : "Awaiting execution"}</span>
                 <strong>{progress}%</strong>
               </div>
+              <div className="delegation-status">
+  {delegationMessage}
+</div>
 
               <div className="task-steps">
                 <span className={progress >= 0 ? "done" : ""}>01&nbsp; PLAN</span>
@@ -257,14 +271,16 @@ export default function Home() {
               </div>
 
               <div className="activity-list">
-                {activities.map(([time, agent, event]) => (
-                  <div className="activity" key={`${time}-${agent}`}>
-                    <span className="activity-time">{time}</span>
-                    <span className="activity-agent">{agent}</span>
-                    <span>{event}</span>
-                  </div>
-                ))}
-              </div>
+  {workflowActivities
+    .filter(([, , , requiredProgress]) => progress >= requiredProgress)
+    .map(([time, agent, event]) => (
+      <div className="activity" key={`${time}-${agent}-${event}`}>
+        <span className="activity-time">{time}</span>
+        <span className="activity-agent">{agent}</span>
+        <span>{event}</span>
+      </div>
+    ))}
+</div>  
             </section>
           </div>
         </section>
