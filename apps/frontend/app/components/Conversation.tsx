@@ -1,6 +1,29 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
+type SpeechRecognitionEvent = Event & {
+  results: SpeechRecognitionResultList;
+};
+
+type SpeechRecognitionInstance = {
+  continuous: boolean;
+  interimResults: boolean;
+  lang: string;
+  start: () => void;
+  stop: () => void;
+  onresult: ((event: SpeechRecognitionEvent) => void) | null;
+  onend: (() => void) | null;
+  onerror: (() => void) | null;
+};
+
+type SpeechRecognitionConstructor = new () => SpeechRecognitionInstance;
+
+declare global {
+  interface Window {
+    SpeechRecognition?: SpeechRecognitionConstructor;
+    webkitSpeechRecognition?: SpeechRecognitionConstructor;
+  }
+}
 
 type ConversationProps = {
   running: boolean;
@@ -18,6 +41,7 @@ export default function Conversation({
   onRunDemo,
 }: ConversationProps) {
   const [command, setCommand] = useState("");
+  const recognitionRef = useRef<SpeechRecognitionInstance | null>(null);
   const [submittedCommand, setSubmittedCommand] = useState(
     "Analyze the project status and prepare a summary.",
   );
@@ -31,7 +55,46 @@ export default function Conversation({
     setCommand("");
     onRunDemo();
   };
+const handleToggleVoice = () => {
+  if (listening) {
+    recognitionRef.current?.stop();
+    onToggleVoice();
+    return;
+  }
 
+  const SpeechRecognition =
+    window.SpeechRecognition || window.webkitSpeechRecognition;
+
+  if (!SpeechRecognition) {
+    alert("Speech recognition is not supported in this browser.");
+    return;
+  }
+
+  const recognition = new SpeechRecognition();
+
+  recognition.lang = "en-IN";
+  recognition.continuous = false;
+  recognition.interimResults = false;
+
+  recognition.onresult = (event) => {
+    const transcript = event.results[0][0].transcript;
+    setCommand(transcript);
+  };
+
+  recognition.onend = () => {
+    onToggleVoice();
+    recognitionRef.current = null;
+  };
+
+  recognition.onerror = () => {
+    onToggleVoice();
+    recognitionRef.current = null;
+  };
+
+  recognitionRef.current = recognition;
+  onToggleVoice();
+  recognition.start();
+};
   const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
     if (event.key === "Enter") {
       handleSubmit();
@@ -81,7 +144,7 @@ export default function Conversation({
       <div className="command-row">
         <button
           className={`voice-button ${listening ? "listening" : ""}`}
-          onClick={onToggleVoice}
+          onClick={handleToggleVoice}
           aria-label="Toggle voice input"
         >
           <span className="mic-dot" />
