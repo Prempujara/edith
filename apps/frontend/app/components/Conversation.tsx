@@ -1,3 +1,7 @@
+"use client";
+
+import { useState } from "react";
+
 type ConversationProps = {
   running: boolean;
   listening: boolean;
@@ -13,6 +17,27 @@ export default function Conversation({
   onToggleVoice,
   onRunDemo,
 }: ConversationProps) {
+  const [command, setCommand] = useState("");
+  const [submittedCommand, setSubmittedCommand] = useState(
+    "Analyze the project status and prepare a summary.",
+  );
+
+  const handleSubmit = () => {
+    const trimmedCommand = command.trim();
+
+    if (!trimmedCommand || running) return;
+
+    setSubmittedCommand(trimmedCommand);
+    setCommand("");
+    onRunDemo();
+  };
+
+  const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === "Enter") {
+      handleSubmit();
+    }
+  };
+
   return (
     <div className="conversation panel">
       <div className="section-heading">
@@ -27,7 +52,7 @@ export default function Conversation({
       <div className="messages">
         <div className="message user-message">
           <span className="message-tag">YOU</span>
-          <p>Analyze the project status and prepare a summary.</p>
+          <p>{submittedCommand}</p>
         </div>
 
         <div className="message edith-message">
@@ -64,16 +89,36 @@ export default function Conversation({
         </button>
 
         <div className="command-input">
-          <span>
-            {listening
-              ? "Listening for command..."
-              : "Enter a command for EDITH..."}
-          </span>
+          <input
+            type="text"
+            value={command}
+            onChange={(event) => setCommand(event.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder={
+              listening
+                ? "Listening for command..."
+                : "Enter a command for EDITH..."
+            }
+            disabled={running}
+            aria-label="Command input"
+          />
 
-          <span className="command-key">⌘ ↵</span>
+          <span className="command-key">↵</span>
         </div>
 
-        <button className="execute-button" onClick={onRunDemo}>
+        <button
+          className="execute-button"
+          onClick={handleSubmit}
+          disabled={running || !command.trim()}
+        >
+          {running ? "RUNNING" : "SEND"}
+        </button>
+
+        <button
+          className="execute-button"
+          onClick={onRunDemo}
+          disabled={running}
+        >
           {running ? "RUNNING" : "RUN DEMO"}
         </button>
       </div>
