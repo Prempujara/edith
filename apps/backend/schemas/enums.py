@@ -48,9 +48,13 @@ class PermissionLevel(str, Enum):
 class TaskStatus(str, Enum):
     """Task lifecycle states (§15).
 
-    ``CANCELLED`` is included as the baseline permits it ("Cancelled tasks
-    may also be supported if required"); it is not exercised by the current
-    vertical slice.
+    ``RUNNING`` is the active-execution state (kept for compatibility; the
+    baseline prose calls this "in progress").
+
+    ``CANCELLED`` and ``TIMED_OUT`` are defined terminal states that are not
+    yet *driven* by any code: cancellation behaviour lands in M2.4 and timeout
+    enforcement in M2.3. They are declared here so the lifecycle machine and
+    persisted data are ready for those milestones.
     """
 
     CREATED = "CREATED"
@@ -59,6 +63,7 @@ class TaskStatus(str, Enum):
     COMPLETED = "COMPLETED"
     FAILED = "FAILED"
     CANCELLED = "CANCELLED"
+    TIMED_OUT = "TIMED_OUT"
 
 
 class EventType(str, Enum):

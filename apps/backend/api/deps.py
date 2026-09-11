@@ -42,7 +42,7 @@ def _build_llm_client(settings: Settings) -> LLMClient:
 def _singletons() -> tuple[AgentRegistry, TaskStore, AgentRuntime]:
     settings = load_settings()
     registry = build_default_registry()
-    store = TaskStore()
+    store = TaskStore(max_tasks=settings.task_retention_limit)
     coding = CodingService(_build_llm_client(settings))
     jarvis = JarvisService(registry, coding)
     runtime = AgentRuntime(registry, store, jarvis)

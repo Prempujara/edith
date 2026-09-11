@@ -1,27 +1,54 @@
 """Task lifecycle state machine (baseline §15).
 
-Enforces the minimum lifecycle and prevents invalid transitions:
+Enforces the lifecycle and prevents invalid transitions:
 
     CREATED -> QUEUED -> RUNNING -> COMPLETED
-                            RUNNING -> FAILED
+    CREATED | QUEUED | RUNNING -> FAILED
+    CREATED | QUEUED | RUNNING -> CANCELLED
+                       RUNNING -> TIMED_OUT
 
-CANCELLED is reachable from the non-terminal states (the baseline permits
-cancellation "if required"); it is not used by the current slice.
+Failure is reachable from every non-terminal state: a task can fail before it
+ever starts (e.g. the decision stage raises while the task is still CREATED),
+so ``FAILED`` must be a legal target from CREATED and QUEUED as well as RUNNING.
+
+``CANCELLED`` and ``TIMED_OUT`` are legal targets but no code performs those
+transitions yet (cancellation is M2.4; timeout is M2.3). Terminal states have
+no outgoing edges, so a terminal task can never be transitioned again.
 """
 
 from __future__ import annotations
 
 from schemas.enums import TaskStatus
 
-# Allowed forward transitions. Terminal states have no outgoing edges.
+# Terminal states have no outgoing edges.
+TERMINAL_STATES: frozenset[TaskStatus] = frozenset(
+    {
+        TaskStatus.COMPLETED,
+        TaskStatus.FAILED,
+        TaskStatus.CANCELLED,
+        TaskStatus.TIMED_OUT,
+    }
+)
+
+# Allowed forward transitions.
 _ALLOWED: dict[TaskStatus, set[TaskStatus]] = {
-    TaskStatus.CREATED: {TaskStatus.QUEUED, TaskStatus.CANCELLED},
-    TaskStatus.QUEUED: {TaskStatus.RUNNING, TaskStatus.CANCELLED},
-    TaskStatus.RUNNING: {TaskStatus.COMPLETED, TaskStatus.FAILED, TaskStatus.CANCELLED},
+    TaskStatus.CREATED: {TaskStatus.QUEUED, TaskStatus.FAILED, TaskStatus.CANCELLED},
+    TaskStatus.QUEUED: {TaskStatus.RUNNING, TaskStatus.FAILED, TaskStatus.CANCELLED},
+    TaskStatus.RUNNING: {
+        TaskStatus.COMPLETED,
+        TaskStatus.FAILED,
+        TaskStatus.CANCELLED,
+        TaskStatus.TIMED_OUT,
+    },
     TaskStatus.COMPLETED: set(),
     TaskStatus.FAILED: set(),
     TaskStatus.CANCELLED: set(),
+    TaskStatus.TIMED_OUT: set(),
 }
+
+
+def is_terminal(status: TaskStatus) -> bool:
+    return status in TERMINAL_STATES
 
 
 class InvalidTransitionError(ValueError):

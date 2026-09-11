@@ -20,10 +20,20 @@ def _now() -> datetime:
 
 
 class Event(BaseModel):
-    """A single recorded event tied to a task."""
+    """A single recorded event tied to a task.
+
+    ``seq`` is a per-task, 1-based monotonic sequence number assigned by the
+    store when the event is recorded (see ``runtime.store``). It gives a
+    task's event stream a deterministic total order independent of timestamp
+    resolution. Events created but not yet added to a store keep ``seq == 0``.
+    """
 
     id: str = Field(default_factory=lambda: str(uuid4()))
     task_id: str
+    seq: int = Field(
+        default=0,
+        description="Per-task monotonic sequence number, assigned by the store.",
+    )
     type: EventType
     agent: AgentName | None = Field(
         default=None, description="Agent that produced the event, if any."

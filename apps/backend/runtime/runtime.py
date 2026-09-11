@@ -11,18 +11,32 @@ The Runtime is shared infrastructure, NOT a central AI decision-maker. It:
 
 The Runtime does not decide *which* agent handles a semantic task — that
 decision is made by JARVIS and merely executed here.
+
+Failure handling (M2.1): every exception is mapped to a user-safe
+:class:`~schemas.errors.TaskError` and the affected task(s) are driven to a
+valid terminal ``FAILED`` state with a ``task.failed`` event. In particular, a
+delegated child that raises terminalizes **both** the child and its parent — no
+task is ever left stuck in ``RUNNING``. Detailed diagnostics go to the server
+log; provider internals and stack traces are never surfaced to callers.
 """
 
 from __future__ import annotations
 
-from runtime.lifecycle import assert_transition
+import logging
+
+from runtime.lifecycle import assert_transition, is_terminal
 from runtime.registry import AgentRegistry
-from runtime.store import TaskStore
+from runtime.repository import TaskRepository
 from schemas.enums import AgentName, EventType, TaskStatus
+from schemas.errors import TaskError
 from schemas.event import Event
 from schemas.task import Task, _now
 from services import edith_service, friday_service
+from services.coding_service import CodingError
 from services.jarvis_service import Decision, JarvisService
+from services.llm.base import LLMConfigError, LLMError, LLMTimeoutError
+
+logger = logging.getLogger(__name__)
 
 # Maps a delegate agent to its executor callable.
 _DELEGATE_EXECUTORS = {
@@ -35,7 +49,7 @@ class AgentRuntime:
     def __init__(
         self,
         registry: AgentRegistry,
-        store: TaskStore,
+        store: TaskRepository,
         jarvis: JarvisService,
     ) -> None:
         self._registry = registry
@@ -66,8 +80,24 @@ class AgentRuntime:
         self._store.add(task)
         self._emit(task.id, EventType.TASK_CREATED, payload_command=command)
 
-        # 2. JARVIS makes the semantic decision.
-        decision = self._jarvis.decide(command)
+        # 2. JARVIS makes the semantic decision. A failure in the decision
+        #    stage must terminalize the task and must NOT proceed to execute an
+        #    undefined decision.
+        try:
+            decision = self._jarvis.decide(command)
+        except Exception as exc:
+            self._fail(
+                task,
+                self._error_from_exception(
+                    exc,
+                    task_id=task.id,
+                    stage="decision",
+                    default_code="DECISION_FAILED",
+                    default_message="Could not determine how to handle the request.",
+                ),
+            )
+            return task
+
         self._emit(
             task.id,
             EventType.AGENT_SELECTED,
@@ -77,18 +107,22 @@ class AgentRuntime:
             handled_directly=decision.handled_directly,
         )
 
+        # 3. Execute the decision. The delegated path terminalizes its own
+        #    child/parent on failure; this guard is the safety net for the
+        #    direct path and any unexpected error.
         try:
             if decision.handled_directly:
                 return self._run_direct(task, decision)
             return self._run_delegated(task, decision)
-        except Exception as exc:  # pragma: no cover - defensive
-            self._fail(task, str(exc))
+        except Exception as exc:
+            self._fail(task, self._error_from_exception(exc, task_id=task.id))
             return task
 
     # --- direct JARVIS path --------------------------------------------
     def _run_direct(self, task: Task, decision: Decision) -> Task:
         task.assigned_agent = AgentName.JARVIS
         self._set_status(task, TaskStatus.QUEUED)
+        task.queued_at = _now()
         self._emit(task.id, EventType.TASK_QUEUED, agent=AgentName.JARVIS)
 
         self._set_status(task, TaskStatus.RUNNING)
@@ -109,6 +143,7 @@ class AgentRuntime:
         # Parent task is assigned to JARVIS (the coordinator) and queued.
         task.assigned_agent = AgentName.JARVIS
         self._set_status(task, TaskStatus.QUEUED)
+        task.queued_at = _now()
         self._emit(task.id, EventType.TASK_QUEUED, agent=AgentName.JARVIS)
         self._set_status(task, TaskStatus.RUNNING)
         task.started_at = _now()
@@ -139,13 +174,33 @@ class AgentRuntime:
         # Runtime transports the child task to the specialist agent.
         executor = _DELEGATE_EXECUTORS[target]
         self._set_status(child, TaskStatus.QUEUED)
+        child.queued_at = _now()
         self._emit(child.id, EventType.TASK_QUEUED, agent=target)
         self._set_status(child, TaskStatus.RUNNING)
         child.started_at = _now()
         self._emit(child.id, EventType.TASK_STARTED, agent=target)
         self._emit(child.id, EventType.AGENT_STARTED, agent=target)
 
-        child_result = executor(child.input)
+        try:
+            child_result = executor(child.input)
+        except Exception as exc:
+            # A failing delegate must terminalize BOTH the child and the parent.
+            # Nothing may remain RUNNING because an executor raised.
+            child_error = self._error_from_exception(
+                exc, task_id=child.id, stage=f"{target.value} execution"
+            )
+            self._fail(child, child_error)
+            self._fail(
+                task,
+                TaskError(
+                    code="DELEGATION_FAILED",
+                    message=(
+                        f"Delegation to {target.value} failed: {child_error.message}"
+                    ),
+                    details={"child_task_id": child.id, "cause": child_error.code},
+                ),
+            )
+            return task
 
         self._emit(child.id, EventType.AGENT_COMPLETED, agent=target)
         self._complete(child, child_result)
@@ -173,9 +228,63 @@ class AgentRuntime:
         task.completed_at = _now()
         self._emit(task.id, EventType.TASK_COMPLETED, agent=task.assigned_agent)
 
-    def _fail(self, task: Task, error: str) -> None:
-        if task.status == TaskStatus.RUNNING:
-            self._set_status(task, TaskStatus.FAILED)
+    def _fail(self, task: Task, error: TaskError) -> None:
+        """Drive ``task`` to a valid terminal FAILED state.
+
+        Safe to call from any state: an already-terminal task is left untouched
+        (its terminal state is never corrupted), and FAILED is a legal target
+        from CREATED/QUEUED/RUNNING, so a task that failed before it started is
+        still terminalized correctly.
+        """
+        if is_terminal(task.status):
+            logger.warning(
+                "Ignoring failure for already-terminal task %s (%s): %s",
+                task.id,
+                task.status.value,
+                error.code,
+            )
+            return
+        self._set_status(task, TaskStatus.FAILED)
         task.error = error
-        task.completed_at = _now()
-        self._emit(task.id, EventType.TASK_FAILED, agent=task.assigned_agent)
+        if task.completed_at is None:
+            task.completed_at = _now()
+        self._emit(
+            task.id,
+            EventType.TASK_FAILED,
+            agent=task.assigned_agent,
+            error_code=error.code,
+        )
+
+    # --- error mapping --------------------------------------------------
+    def _error_from_exception(
+        self,
+        exc: Exception,
+        *,
+        task_id: str,
+        stage: str = "execution",
+        default_code: str = "INTERNAL_ERROR",
+        default_message: str = "An internal error occurred while processing the task.",
+    ) -> TaskError:
+        """Map an exception to a user-safe :class:`TaskError`.
+
+        Known domain errors carry curated, safe messages and are surfaced as-is.
+        Anything unexpected is logged with a full traceback server-side and
+        reported to the caller only as a generic message — no stack traces,
+        provider internals, or credentials ever leave the process.
+        """
+        if isinstance(exc, LLMTimeoutError):
+            code = "LLM_TIMEOUT"
+        elif isinstance(exc, LLMConfigError):
+            code = "LLM_CONFIG_ERROR"
+        elif isinstance(exc, LLMError):
+            code = "LLM_ERROR"
+        elif isinstance(exc, CodingError):
+            code = "CODING_ERROR"
+        else:
+            logger.exception(
+                "Unexpected error during %s for task %s", stage, task_id
+            )
+            return TaskError(code=default_code, message=default_message)
+
+        logger.warning("Task %s failed during %s: %s: %s", task_id, stage, code, exc)
+        return TaskError(code=code, message=str(exc))

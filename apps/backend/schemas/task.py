@@ -13,6 +13,7 @@ from uuid import uuid4
 from pydantic import BaseModel, Field
 
 from .enums import AgentName, TaskStatus
+from .errors import TaskError
 
 
 def _now() -> datetime:
@@ -32,7 +33,8 @@ class Task(BaseModel):
     status: TaskStatus = TaskStatus.CREATED
     priority: int = 0
     created_at: datetime = Field(default_factory=_now)
+    queued_at: datetime | None = None
     started_at: datetime | None = None
     completed_at: datetime | None = None
     result: dict | None = None
-    error: str | None = None
+    error: TaskError | None = None

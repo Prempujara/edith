@@ -7,6 +7,7 @@ from datetime import datetime
 from pydantic import BaseModel, Field
 
 from .enums import AgentName, Capability, EventType, TaskStatus
+from .errors import TaskError
 
 
 class CommandRequest(BaseModel):
@@ -28,15 +29,17 @@ class TaskResponse(BaseModel):
     status: TaskStatus
     priority: int
     created_at: datetime
+    queued_at: datetime | None
     started_at: datetime | None
     completed_at: datetime | None
     result: dict | None
-    error: str | None
+    error: TaskError | None
 
 
 class EventResponse(BaseModel):
     id: str
     task_id: str
+    seq: int
     type: EventType
     agent: AgentName | None
     timestamp: datetime
