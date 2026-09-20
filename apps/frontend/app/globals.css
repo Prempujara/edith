@@ -134,7 +134,31 @@ button {
   letter-spacing: 0.16em;
   color: #9ab3c2;
 }
+.system-status-item {
+  display: grid;
+  grid-template-columns: 8px 1fr auto;
+  align-items: center;
+  gap: 8px;
+  min-width: 120px;
+}
 
+.system-status-item + .system-status-item {
+  margin-top: 4px;
+}
+
+.system-status-item strong {
+  color: #d8f6ff;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+}
+
+.status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #4fffc3;
+  box-shadow: 0 0 8px rgba(79, 255, 195, 0.8);
+}
 .status-dot {
   display: inline-block;
   width: 6px;
@@ -702,5 +726,51 @@ button {
 
   .footer {
     display: none;
+  }
+}
+@media (max-width: 900px) {
+  .dashboard {
+    grid-template-columns: 1fr;
+  }
+
+  .agent-panel {
+    position: static;
+  }
+
+  .hero {
+    grid-template-columns: 1fr;
+  }
+
+  .core {
+    margin: 24px auto 0;
+  }
+
+  .system-status {
+    width: 100%;
+  }
+
+  .system-status-item {
+    min-width: 0;
+  }
+}
+
+@media (max-width: 600px) {
+  .conversation-panel,
+  .hero,
+  .panel {
+    padding: 18px;
+  }
+
+  .command-row {
+    flex-direction: column;
+  }
+
+  .command-row input,
+  .command-row button {
+    width: 100%;
+  }
+
+  .system-status {
+    border-radius: 16px;
   }
 }

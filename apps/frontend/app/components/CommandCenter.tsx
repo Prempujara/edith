@@ -2,6 +2,12 @@ type CommandCenterProps = {
   running: boolean;
 };
 
+const systemStatus = [
+  ["API", "ONLINE"],
+  ["AGENTS", "ONLINE"],
+  ["EVENTS", "STREAMING"],
+];
+
 export default function CommandCenter({ running }: CommandCenterProps) {
   return (
     <div className="hero panel">
@@ -14,6 +20,16 @@ export default function CommandCenter({ running }: CommandCenterProps) {
           EDITH is standing by. Three intelligent agents are connected
           and ready to execute distributed tasks.
         </p>
+
+        <div className="system-status">
+          {systemStatus.map(([label, status]) => (
+            <div className="system-status-item" key={label}>
+              <span className="status-dot" />
+              <span>{label}</span>
+              <strong>{status}</strong>
+            </div>
+          ))}
+        </div>
       </div>
 
       <div className={`core ${running ? "core-running" : ""}`}>

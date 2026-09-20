@@ -62,7 +62,7 @@ export default function Conversation({
   command: trimmedCommand,
 });
 
-      console.log("EDITH task created:", response.task.task_id);
+      console.log("EDITH task created:", response.task.id);
 
       onRunDemo();
     } catch (error) {

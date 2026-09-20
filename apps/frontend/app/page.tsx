@@ -1,11 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { getTask } from "@/lib/api";
 import AgentNetwork from "./components/AgentNetwork";
 import CommandCenter from "./components/CommandCenter";
 import Conversation from "./components/Conversation";
 import CurrentTask from "./components/CurrentTask";
 import ActivityStream from "./components/ActivityStream";
+import IntegrationsPanel from "./components/IntegrationsPanel";
 
 type Agent = {
   name: string;
@@ -145,9 +147,10 @@ export default function Home() {
             />
 
             <ActivityStream
-              progress={progress}
-              workflowActivities={workflowActivities}
-            />
+  workflowActivities={workflowActivities}
+  running={running}
+/>
+            <IntegrationsPanel />
           </div>
         </section>
       </section>

@@ -1,12 +1,23 @@
 type ActivityStreamProps = {
-  progress: number;
   workflowActivities: (string | number)[][];
+  running: boolean;
 };
 
 export default function ActivityStream({
-  progress,
   workflowActivities,
+  running,
 }: ActivityStreamProps) {
+  const integrationActivities = [
+    ["GITHUB", "Repository connected", "ready"],
+    ["BROWSER", "Browser automation ready", "ready"],
+    ["SLACK", "Workspace integration ready", "ready"],
+  ];
+
+  const activities = [
+    ...workflowActivities,
+    ...integrationActivities,
+  ];
+
   return (
     <section className="panel activity-panel">
       <div className="section-heading compact">
@@ -17,19 +28,20 @@ export default function ActivityStream({
       </div>
 
       <div className="activity-list">
-        {workflowActivities
-          .filter(([, , , requiredProgress]) => progress >= Number(requiredProgress))
-          .map(([time, agent, event]) => (
-            <div
-              className="activity"
-              key={`${time}-${agent}-${event}`}
-            >
-              <span className="activity-time">{time}</span>
-              <span className="activity-agent">{agent}</span>
-              <span>{event}</span>
-            </div>
-          ))}
+        {activities.map(([agent, event, time]) => (
+          <div className="activity" key={`${agent}-${event}-${time}`}>
+            <span className="activity-time">{time}</span>
+            <span className="activity-agent">{agent}</span>
+            <span>{event}</span>
+          </div>
+        ))}
       </div>
+
+      {!running && workflowActivities.length === 0 && (
+        <div className="activity-empty">
+          Waiting for agent activity...
+        </div>
+      )}
     </section>
   );
 }
