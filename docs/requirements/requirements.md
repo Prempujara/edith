@@ -13,6 +13,47 @@
 | R-007 | Core Runtime | Independent tasks can execute concurrently in parallel. | High | Sprint 1 | Planned |
 | R-008 | Voice | Voice input successfully registers and reaches an agent. | Medium | Sprint 1 | Planned |
 
+# 2. Non-Functional Requirements
+
+| ID | Requirement | Priority |
+|---|---|---|
+| NFR-001 | The system should provide clear feedback when a task is started, completed or failed. | High |
+| NFR-002 | Restricted operations must be protected by permission checks. | Critical |
+| NFR-003 | Important file operations must avoid accidental modification of unrelated files. | Critical |
+| NFR-004 | The system should handle agent failures without crashing the complete application. | High |
+| NFR-005 | The interface should be understandable to a normal user. | Medium |
+| NFR-006 | The system should maintain task information consistently. | High |
+| NFR-007 | The system should provide useful error messages. | Medium |
+| NFR-008 | Independent tasks should be capable of running in parallel. | High |
+| NFR-009 | External integrations should fail gracefully when unavailable. | High |
+| NFR-010 | The system should maintain an auditable record of important agent events. | High |
+
+---
+
+# 3. Security Requirements
+
+| ID | Requirement |
+|---|---|
+| SEC-001 | Agents must operate only within their permitted capabilities. |
+| SEC-002 | Destructive operations must require confirmation. |
+| SEC-003 | File paths must be validated before file operations. |
+| SEC-004 | Unauthorized operations must be rejected. |
+| SEC-005 | Important project files must not be modified during QA testing without authorization. |
+
+---
+
+# 4. Requirement Status
+
+Initial requirements baseline prepared by the Project Analyst + QA Engineer.
+
+Status values:
+
+- Proposed
+- Approved
+- Implemented
+- Tested
+- Accepted
+
 ## 2. Risk Register
 
 | Risk ID | Risk Description | Impact | Severity | Mitigation Strategy | Owner |
