@@ -2,8 +2,8 @@
 
 **Author:** Mannan Shah (System Designer & Solutions Architect)  
 **Project:** EDITH (Enhanced Distributed Intelligent Task Handler)  
-**Date:** August 30, 2026  
-**Status:** Proposed Specification — Subject to EDITH-000 Approval  
+**Date:** August 30, 2026 (Updated: September 20, 2026)  
+**Status:** APPROVED ARCHITECTURE BASELINE  
 
 ---
 

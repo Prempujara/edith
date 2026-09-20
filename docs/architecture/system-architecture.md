@@ -2,128 +2,192 @@
 
 **Author:** Mannan Shah (System Designer & Solutions Architect)  
 **Project:** EDITH (Enhanced Distributed Intelligent Task Handler)  
-**Date:** August 30, 2026  
-**Status:** Proposed Blueprint — Subject to EDITH-000 Approval  
+**Date:** August 30, 2026 (Updated: September 20, 2026)  
+**Status:** APPROVED ARCHITECTURE BASELINE  
 
 ---
 
-## 1. Architectural Overview
+## 1. Executive Summary & Architectural Vision
 
-EDITH (Enhanced Distributed Intelligent Task Handler) is designed as a **Modular Monolith** for its college MVP release. This architectural pattern balances clean separation of concerns, high maintainability, and rapid development speed with a strict **₹0 operational budget**.
+EDITH (Enhanced Distributed Intelligent Task Handler) is a multi-agent AI assistant ecosystem built as a **Modular Monolith** for its college MVP release. The architecture balances clean separation of concerns, high maintainability, and rapid development speed under a strict **₹0 operational budget constraint**.
 
-The architecture decouples user interactions (Voice, Web Dashboard, Slack) from core decision-making (Orchestrator) and action execution (Coding Agent & Tool Layer).
+The ecosystem consists of three specialized agents sharing common infrastructure while maintaining distinct domain responsibilities, tool access boundaries, and personalities:
+* **JARVIS** — Primary Conversational, Coding, Reasoning, and Research Agent.
+* **EDITH** — Computer/Browser Interaction and OS Automation Agent.
+* **FRIDAY** — File, Document, and Organization Agent.
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                            USER                             │
+└──────────────┬──────────────────────────────┬───────────────┘
+               │ Spoken Voice Input           │ Audio Response
+               ▼                              ▲
+┌─────────────────────────────────────────────────────────────┐
+│                 VOICE / DASHBOARD FRONTEND                  │
+│              (Next.js / Web Speech API MVP)                 │
+└──────────────────────────────┬──────────────────────────────┘
+                               │ User Request
+                               ▼
+┌─────────────────────────────────────────────────────────────┐
+│                    JARVIS (PRIMARY AGENT)                   │
+│        • Conversation • Reasoning • Coding • Research       │
+│        • Evaluates and initiates agent delegation           │
+└──────────────┬──────────────────────────────┬───────────────┘
+               │ Delegated Task               │ Delegated Task
+               ▼                              ▼
+┌──────────────────────────────┐┌──────────────────────────────┐
+│            EDITH             ││            FRIDAY            │
+│ (Computer & Browser Specialist)││(Files & Document Specialist)│
+└──────────────┬───────────────┘└──────────────┬───────────────┘
+               │                              │
+               └──────────────┬───────────────┘
+                              ▼
+┌─────────────────────────────────────────────────────────────┐
+│                       SHARED RUNTIME                        │
+│   • Execution Coordination        • Routing Infrastructure  │
+│   • Task State Tracking           • Event System (asyncio)  │
+│   • Tool Registry & Permissions   • Shared Context & Memory │
+└──────────────────────────────┬──────────────────────────────┘
+                               │ Controlled Tool Requests
+                               ▼
+┌─────────────────────────────────────────────────────────────┐
+│                        TOOL LAYER                           │
+│   • Local Filesystem Tool  • Terminal / Shell Exec Tool     │
+│   • OS / Browser Control   • Git Repository Tool            │
+└─────────────────────────────────────────────────────────────┘
+```
+
+The fundamental architectural principle governing EDITH is:
+> **Specialized agents make delegation decisions autonomously. The Shared Runtime manages execution coordination, routing infrastructure, task state tracking, tool permissions, and event distribution without acting as a central AI decision-maker.**
 
 ---
 
-## 2. High-Level System Architecture Diagram
+## 2. End-to-End System Flow
 
 ```mermaid
 graph TD
-    %% User Interfaces & Ingestion
+    %% User Interfaces
     subgraph Client Layer [User Facing Interfaces]
         User([User])
-        WebUI[Next.js Dashboard / Web UI]
-        VoiceIn[Voice Input - STT Adapter]
-        SlackClient[Slack Workspace Channel]
+        WebUI[Next.js Web Dashboard]
+        VoiceIn[Voice STT Ingestion API]
+        SlackClient[Slack Channel Adapter]
     end
 
-    %% API Entrypoint
+    %% API Gateway
     subgraph API Layer [EDITH Gateway - FastAPI]
-        API[EDITH REST API Gateway]
+        API[FastAPI Gateway / REST API]
         CORS[CORS Middleware]
         Validation[Request Validation Layer]
     end
 
-    %% Internal Core Subsystems
-    subgraph Core System [EDITH Core Subsystems - Python Backend]
-        Orchestrator[Orchestrator Engine]
-        TaskStore[(In-Memory Task State Store)]
-        EventBus[Internal Event Publisher]
+    %% Specialized Agents
+    subgraph Agent Layer [Specialized Agent Tier]
+        JARVIS[JARVIS Agent - Primary / Coding / Research]
+        EDITH[EDITH Agent - Computer / Browser Control]
+        FRIDAY[FRIDAY Agent - Files / Organization]
     end
 
-    %% Agent & Tool Execution
-    subgraph Execution Layer [Agent & Repository Sandbox]
-        CodingAgent[Coding Agent Module]
-        ToolLayer[Tool / Repository Execution Boundary]
-        TargetRepo[(Target Workspace Filesystem)]
+    %% Shared Infrastructure
+    subgraph Runtime Layer [Shared Agent Runtime]
+        TaskTracker[Task State Tracker]
+        EventBus[In-Memory Event Bus]
+        ContextStore[Shared Memory & Context Store]
+        ToolRegistry[Tool Registry & Permission Checker]
     end
 
-    %% Output Adapters
+    %% Execution Boundary
+    subgraph Tool Layer [Controlled Tool Execution Sandbox]
+        FileTool[File Sandbox Tool]
+        ShellTool[Shell Execution Tool]
+        BrowserTool[Browser / GUI Automation Tool]
+        GitTool[Git Repository Tool]
+    end
+
+    %% External Adapters
     subgraph Adapter Layer [Integration Adapters]
-        VoiceOut[Voice Output Adapter - TTS]
-        SlackAdapter[Slack Notification Adapter]
+        VoiceOut[Voice TTS Synthesizer Adapter]
+        SlackOut[Slack Webhook Adapter]
     end
 
-    %% Data & Control Flow Connections
-    User -->|Text Command| WebUI
-    User -->|Voice Command| VoiceIn
-    VoiceIn -->|Recognized Text| WebUI
+    %% Flow connections
+    User -->|Text Request| WebUI
+    User -->|Voice Speech| VoiceIn
+    VoiceIn -->|Recognized Prompt| WebUI
+    SlackClient -->|Incoming Message| API
 
-    WebUI -->|Task Creation Request - PROPOSED| CORS
+    WebUI -->|REST Task Creation Request| CORS
     CORS --> Validation
     Validation --> API
 
-    API -->|1. Create Task Record| TaskStore
-    API -->|2. Submit Task| Orchestrator
-    
-    Orchestrator -->|3. Update Task State| TaskStore
-    Orchestrator -->|4. Dispatch Command| CodingAgent
-    Orchestrator -->|Emit Proposed Event| EventBus
+    API -->|1. Register Initial Task| TaskTracker
+    API -->|2. Dispatch Request| JARVIS
 
-    CodingAgent -->|5. Request Controlled Action| ToolLayer
-    ToolLayer -->|6. Execute Read/Write/Command| TargetRepo
-    TargetRepo -->|7. Return Execution Output| ToolLayer
-    ToolLayer -->|8. Return Result| CodingAgent
-    CodingAgent -->|9. Complete Subtask| Orchestrator
+    JARVIS -->|3a. Direct Execution| ToolRegistry
+    JARVIS -->|3b. Delegate Computer Task| EDITH
+    JARVIS -->|3c. Delegate File Task| FRIDAY
 
-    Orchestrator -->|10. Finalize Task State| TaskStore
-    Orchestrator -->|11. Emit Completion/Failure Event| EventBus
+    EDITH -->|4a. Controlled Computer Action| ToolRegistry
+    FRIDAY -->|4b. Controlled File Action| ToolRegistry
 
-    EventBus -->|Publish Event| WebUI
-    EventBus -->|Publish Event| VoiceOut
-    EventBus -->|Publish Event| SlackAdapter
+    ToolRegistry -->|Permission Check Passed| FileTool
+    ToolRegistry -->|Permission Check Passed| ShellTool
+    ToolRegistry -->|Permission Check Passed| BrowserTool
+    ToolRegistry -->|Permission Check Passed| GitTool
 
-    VoiceOut -->|Audio Output| User
-    SlackAdapter -->|HTTP Webhook Alert| SlackClient
+    FileTool -->|Return Result| ToolRegistry
+    ShellTool -->|Return Result| ToolRegistry
+    BrowserTool -->|Return Result| ToolRegistry
+    GitTool -->|Return Result| ToolRegistry
+
+    ToolRegistry -->|Execution Output| TaskTracker
+    TaskTracker -->|Emit State Event| EventBus
+
+    EventBus -->|Publish Progress Event| WebUI
+    EventBus -->|Publish Voice Alert| VoiceOut
+    EventBus -->|Publish Slack Alert| SlackOut
+
+    VoiceOut -->|Spoken Response| User
+    SlackOut -->|Slack Channel Alert| SlackClient
 ```
 
 ---
 
-## 3. Boundary & Classification Breakdown
+## 3. Subsystem Breakdown & Boundary Definitions
 
-### 3.1 User-Facing Components
-* **Next.js Web Dashboard (`apps/frontend`):** Provides task submission interfaces, configurable periodic polling for status updates, execution logs, agent state visualizations, and interactive control.
-* **Voice Input Interface (`packages/voice`):** Captures spoken audio using provider-independent Speech-to-Text (STT) adapter interfaces (browser-native Web Speech API as a zero-cost MVP implementation option), converts audio to text prompts, and populates the UI.
+### 3.1 Specialized Agent Tier (`apps/backend/agents` / `packages/agents`)
+1. **JARVIS (Primary Agent):** Owns conversational interactions, software engineering, reasoning, code synthesis, web research, intent classification, and delegation orchestration.
+2. **EDITH (Computer Control Specialist):** Owns desktop GUI automation, browser interaction, active window management, screenshot capture, and local desktop actions.
+3. **FRIDAY (Files & Document Specialist):** Owns directory organization, file indexing, document parsing, template generation, bulk file operations, and workspace structuring.
 
-### 3.2 Internal EDITH Components (Modular Monolith Backend)
-* **EDITH REST API Gateway (`apps/backend`):** FastAPI application handling request validation, CORS middleware, and endpoint routing. *(Exact endpoint paths and schemas: PROPOSED — REQUIRES EDITH-000 APPROVAL)*.
-* **Task State Store (In-Memory):** Thread-safe task state tracking store operating behind a replaceable persistence boundary.
-* **Orchestrator Engine:** Decoupled workflow manager responsible for interpreting task requests, delegating work to agents, managing retries, and recording state transitions.
-* **Internal Event System:** Lightweight in-process async event broker (`asyncio`) for decoupled component notifications without external message queues.
-* **Coding Agent Module (`packages/agents/coding`):** Specialized decision agent that formulates code edit strategies and tool requests.
-* **Tool / Repository Execution Boundary:** Controlled filesystem and command execution boundary performing validated reads, writes, git checks, and command runs with strict path restrictions and timeouts.
+### 3.2 Shared Agent Runtime (`apps/backend/runtime`)
+1. **Task Execution Coordinator & Tracker:** Thread-safe state tracker maintaining task lifecycles, parent/child task hierarchies, and delegation graphs.
+2. **Message Transport & Event Bus:** In-process asynchronous event broker (`asyncio`) delivering events (`TaskCreated`, `TaskDelegated`, `ToolExecuted`, `TaskCompleted`, `TaskFailed`) to internal listeners.
+3. **Shared Context & Memory Store:** Task-scoped and agent-scoped context registry providing memory isolation and parent-child state propagation.
+4. **Tool Registry & Permission Enforcer:** Global registry of executable tools enforcing strict safety policies (Safe, Sensitive, Confirmation-Required, Forbidden).
 
-### 3.3 External Integration Adapters
-* **Voice Output Adapter (`packages/voice`):** Transforms task completion summaries into speech via provider-independent Text-to-Speech (TTS) interfaces (browser-native SpeechSynthesis as a zero-cost MVP implementation option).
-* **Slack Integration Adapter (`packages/slack`):** Event-driven notification adapter translating EDITH task completion/failure events into formatted Slack incoming webhook alerts.
-
----
-
-## 4. Control Flow & Communication Strategy
-
-1. **Synchronous Entry:** Task creation is performed synchronously via a REST task creation request (`PROPOSED: POST /api/v1/tasks`). The client receives an immediate HTTP 202 Accepted response with a unique task identifier.
-2. **Asynchronous Execution:** Orchestrator processes the task asynchronously in a background worker task.
-3. **Decoupled Event Broadcasting:** State changes emit internal domain events (`Task Created`, `Tool Executed`, `Task Completed` — *PROPOSED EVENT NAMES*). Subscribers (Dashboard, Slack Adapter, Voice Adapter) consume these events independently.
-4. **Polling Result Retrieval:** Dashboard performs frontend-controlled periodic polling (`PROPOSED: GET /api/v1/tasks/{task_id}`) to refresh state updates without complex WebSocket state overhead.
+### 3.3 User Interfaces & Integration Adapters (`apps/frontend`, `packages/voice`, `packages/slack`)
+1. **Next.js Web Dashboard:** React-based UI providing task submission inputs, configurable HTTP polling for live status, agent activity streams, terminal logs, and system metrics.
+2. **Voice Interface:** Abstract STT/TTS adapter layer using browser Web Speech API for zero-cost MVP execution, with fallback mocks for dev/test runs.
+3. **Slack Adapter:** Event-driven notification publisher sending task summaries to Slack channels via zero-cost incoming webhooks.
 
 ---
 
-## 5. Architectural Quality Attributes
+## 4. Control, Data, and Trust Boundaries
 
-| Quality Attribute | Architectural Strategy |
-| :--- | :--- |
-| **Zero-Budget Compliance** | Uses local Python execution, browser-native speech capabilities as an option, open-source libraries, and free Slack incoming webhooks. Zero required SaaS subscriptions. |
-| **Modularity & Isolation** | Codebase is structured as clear packages (`packages/*`) and modular backend folders. |
-| **Maintainability** | Clean separation between API, Orchestrator, Agent logic, and controlled Tool execution. |
-| **Replaceability** | Voice and Slack layers are defined via abstract provider-independent interfaces, enabling provider substitution without touching core Orchestrator logic. |
-| **Testability** | In-memory task state and mockable tool boundaries allow 100% offline unit and integration testing. |
+| Boundary Type | Components Involved | Boundary Enforcer & Mechanics |
+| :--- | :--- | :--- |
+| **User Boundary** | User ↔ Web UI / Voice Ingestion | REST API Request Validation, CORS Policy, Input Sanitization. |
+| **Agent Delegation Boundary** | JARVIS ↔ EDITH / FRIDAY | Shared Runtime Delegation Transport (`parent_task_id`, `source_agent`, `target_agent`). |
+| **Tool Execution Boundary** | Agents ↔ Host Environment | Tool Registry Permission Check, Workspace Directory Lock (`path.resolve()`), Execution Timeout Enforcer. |
+| **Local / Cloud Boundary** | Shared Runtime ↔ Cloud LLM Services | Provider Abstraction Interfaces (`LLMProvider`). Local credentials kept strictly in local `.env` files (never committed). |
+
+---
+
+## 5. Zero-Budget Architectural Compliance
+
+To ensure EDITH remains 100% operational without mandatory paid subscriptions:
+1. **Local Python & FastAPI Backend:** Runs locally on developer/user machines without paid cloud app servers.
+2. **Browser-Native Speech Capabilities:** Uses Web Speech API (`SpeechRecognition` & `SpeechSynthesis`) for zero-cost voice ingestion and playback.
+3. **Free Tier / Open Source Models:** Supports local models via Ollama / Llama.cpp or free-tier API endpoints (Gemini / OpenAI trial keys) through abstract provider interfaces.
+4. **Zero-Cost Storage & Messaging:** Uses in-memory task stores and Python `asyncio` event loops, eliminating required PostgreSQL, Redis, or Kafka infrastructure.
