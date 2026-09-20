@@ -213,10 +213,7 @@ class AgentRuntime:
             "delegated_to": target.value,
             "child_task_id": child.id,
             "result": child_result,
-            "summary": (
-                f"JARVIS delegated the task to {target.value} and returned "
-                f"its result."
-            ),
+            "summary": child_result.get("summary") or f"JARVIS delegated the task to {target.value} and returned its result.",
         }
         self._complete(task, parent_result)
         return task

@@ -1,69 +1,217 @@
-import Image from "next/image";
+"use client";
+
+import { useEffect, useState } from "react";
+import { getTaskEvents, submitCommand, type TaskResponse } from "@/lib/api";
+import AgentNetwork from "./components/AgentNetwork";
+import CommandCenter from "./components/CommandCenter";
+import Conversation from "./components/Conversation";
+import CurrentTask from "./components/CurrentTask";
+import ActivityStream from "./components/ActivityStream";
+import IntegrationsPanel from "./components/IntegrationsPanel";
+
+type Agent = {
+  name: string;
+  role: string;
+  status: string;
+  detail: string;
+  color: string;
+};
 
 export default function Home() {
+  const [running, setRunning] = useState(false);
+  const [progress, setProgress] = useState(100);
+  const [listening, setListening] = useState(false);
+  const [activeAgent, setActiveAgent] = useState("JARVIS");
+  const [currentTask, setCurrentTask] = useState<TaskResponse | null>(null);
+  const [liveActivities, setLiveActivities] = useState<(string | number)[][]>([]);
+
+  const [agents, setAgents] = useState<Agent[]>([
+    {
+      name: "JARVIS",
+      role: "Reasoning & Coding",
+      status: "STANDBY",
+      detail: "Ready for user commands",
+      color: "cyan",
+    },
+    {
+      name: "EDITH",
+      role: "Computer & Browser",
+      status: "STANDBY",
+      detail: "Ready for computer control",
+      color: "violet",
+    },
+    {
+      name: "FRIDAY",
+      role: "Files & Organization",
+      status: "STANDBY",
+      detail: "Workspace ready",
+      color: "blue",
+    },
+  ]);
+
+  const handleTaskExecuted = async (task: TaskResponse) => {
+    setCurrentTask(task);
+    setRunning(true);
+    setProgress(25);
+
+    const targetAgent =
+      (task.result?.delegated_to as string) ||
+      task.assigned_agent ||
+      "JARVIS";
+
+    setActiveAgent("JARVIS");
+
+    // Fetch real backend events
+    try {
+      const events = await getTaskEvents(task.id);
+      const newActivities = events.map((ev: any) => {
+        const timeStr = new Date().toLocaleTimeString();
+        const agentName = ev.agent || "JARVIS";
+        const typeStr = (ev.type || "event").replace(".", " ").toUpperCase();
+        return [agentName, typeStr, timeStr];
+      });
+      setLiveActivities(newActivities);
+    } catch (e) {
+      console.warn("Could not fetch events:", e);
+    }
+
+    // Step animation simulating agent transition to target agent
+    setTimeout(() => {
+      setProgress(60);
+      setActiveAgent(targetAgent);
+
+      setAgents((prev) =>
+        prev.map((a) => {
+          if (a.name === targetAgent) {
+            return { ...a, status: "EXECUTING", detail: `Processing task: ${task.input}` };
+          }
+          return { ...a, status: "STANDBY", detail: "Standing by" };
+        })
+      );
+    }, 400);
+
+    setTimeout(() => {
+      setProgress(100);
+      setRunning(false);
+      setActiveAgent("JARVIS");
+
+      setAgents([
+        {
+          name: "JARVIS",
+          role: "Reasoning & Coding",
+          status: "STANDBY",
+          detail: "Task completed",
+          color: "cyan",
+        },
+        {
+          name: "EDITH",
+          role: "Computer & Browser",
+          status: "STANDBY",
+          detail: targetAgent === "EDITH" ? "Browser/System action completed" : "Ready for actions",
+          color: "violet",
+        },
+        {
+          name: "FRIDAY",
+          role: "Files & Organization",
+          status: "STANDBY",
+          detail: targetAgent === "FRIDAY" ? "Files organized" : "Workspace ready",
+          color: "blue",
+        },
+      ]);
+    }, 1200);
+  };
+
+  const startDemo = async () => {
+    try {
+      const res = await submitCommand("Write a Python function for factorial");
+      handleTaskExecuted(res.task);
+    } catch (err) {
+      console.error("Demo submit error:", err);
+    }
+  };
+
+  const delegationMessage = currentTask
+    ? currentTask.result?.delegated_to
+      ? `JARVIS → ${currentTask.result.delegated_to}  •  ${currentTask.result.summary || "Delegated task completed"}`
+      : `JARVIS  •  ${currentTask.result?.summary || "Task executed directly"}`
+    : "System ready • Enter a command to trigger agent execution";
+
+  const [timeString, setTimeString] = useState<string>("");
+
+  useEffect(() => {
+    setTimeString(new Date().toLocaleTimeString());
+    const interval = setInterval(() => {
+      setTimeString(new Date().toLocaleTimeString());
+    }, 1000);
+    return () => clearInterval(interval);
+  }, []);
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert h-5 w-[100px]"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
+    <main className="edith-shell">
+      <div className="ambient ambient-one" />
+      <div className="ambient ambient-two" />
+
+      <header className="topbar">
+        <div className="brand">
+          <div className="brand-orb">E</div>
+
+          <div>
+            <div className="brand-name">EDITH</div>
+            <div className="brand-subtitle">
+              ENHANCED DISTRIBUTED INTELLIGENT TASK HANDLER
+            </div>
+          </div>
+        </div>
+
+        <div className="system-status">
+          <span className="status-dot" />
+          ALL AGENTS OPERATIONAL & CONNECTED TO BACKEND
+        </div>
+
+        <div className="topbar-time" suppressHydrationWarning>
+          {timeString || "19:24:18 IST"}
+        </div>
+      </header>
+
+      <section className="dashboard">
+        <AgentNetwork
+          agents={agents}
+          activeAgent={activeAgent}
+          running={running}
         />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the{" "}
-            <code className="rounded bg-black/[.06] px-1.5 py-0.5 font-mono text-[0.9em] dark:bg-white/[.08]">
-              page.tsx
-            </code>{" "}
-            file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert h-[14px] w-4"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
+
+        <section className="main-column">
+          <CommandCenter running={running} />
+
+          <Conversation
+            running={running}
+            listening={listening}
+            activeAgent={activeAgent}
+            onToggleVoice={() => setListening((value) => !value)}
+            onRunDemo={startDemo}
+            onTaskExecuted={handleTaskExecuted}
+          />
+
+          <div className="lower-grid">
+            <CurrentTask
+              progress={progress}
+              running={running}
+              delegationMessage={delegationMessage}
             />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
-    </div>
+
+            <ActivityStream
+              workflowActivities={liveActivities}
+              running={running}
+            />
+            <IntegrationsPanel />
+          </div>
+        </section>
+      </section>
+
+      <footer className="footer">
+        <span>EDITH CORE v0.1 • MULTI-AGENT COMMAND SYSTEM</span>
+        <span>JARVIS ↔ EDITH ↔ FRIDAY</span>
+      </footer>
+    </main>
   );
 }

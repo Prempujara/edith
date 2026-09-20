@@ -23,15 +23,14 @@ def _build_llm_client(settings: Settings) -> LLMClient:
     """Select the LLM client according to configuration.
 
     Uses the offline fake in mock mode (or when no API key is configured);
-    otherwise the real provider adapter. The vendor SDK is imported lazily
-    inside the adapter, so it is only needed when a real provider is used.
+    otherwise the Gemini Client adapter.
     """
     if settings.use_mock:
         return FakeLLMClient()
 
-    from services.llm.anthropic_client import AnthropicClient
+    from services.llm.gemini_client import GeminiClient
 
-    return AnthropicClient(
+    return GeminiClient(
         api_key=settings.llm_api_key or "",
         model=settings.llm_model,
         timeout=settings.llm_timeout,

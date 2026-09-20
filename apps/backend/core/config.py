@@ -28,7 +28,7 @@ from typing import Mapping
 
 from dotenv import load_dotenv
 
-DEFAULT_MODEL = "claude-sonnet-5"
+DEFAULT_MODEL = "claude-3-5-sonnet-20241022"
 DEFAULT_TIMEOUT = 30.0
 DEFAULT_TASK_RETENTION_LIMIT = 1000
 
@@ -67,7 +67,7 @@ def _parse_retention(raw: str | None) -> int | None:
 
 
 def _settings_from_env(env: Mapping[str, str]) -> Settings:
-    api_key = env.get("EDITH_LLM_API_KEY") or env.get("ANTHROPIC_API_KEY") or None
+    api_key = env.get("GEMINI_API_KEY") or env.get("EDITH_LLM_API_KEY") or env.get("ANTHROPIC_API_KEY") or None
     model = env.get("EDITH_LLM_MODEL") or DEFAULT_MODEL
 
     raw_timeout = env.get("EDITH_LLM_TIMEOUT")
