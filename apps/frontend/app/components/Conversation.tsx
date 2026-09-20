@@ -1,6 +1,8 @@
 "use client";
 
 import { useRef, useState } from "react";
+import { submitCommand } from "@/lib/api";
+
 type SpeechRecognitionEvent = Event & {
   results: SpeechRecognitionResultList;
 };
@@ -42,59 +44,77 @@ export default function Conversation({
 }: ConversationProps) {
   const [command, setCommand] = useState("");
   const recognitionRef = useRef<SpeechRecognitionInstance | null>(null);
+
   const [submittedCommand, setSubmittedCommand] = useState(
     "Analyze the project status and prepare a summary.",
   );
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     const trimmedCommand = command.trim();
 
     if (!trimmedCommand || running) return;
 
     setSubmittedCommand(trimmedCommand);
     setCommand("");
-    onRunDemo();
+
+    try {
+      const response = await submitCommand({
+  command: trimmedCommand,
+});
+
+      console.log("EDITH task created:", response.task.task_id);
+
+      onRunDemo();
+    } catch (error) {
+      console.error("Failed to submit command:", error);
+
+      alert(
+        "EDITH backend is unavailable. Please check that the backend is running.",
+      );
+    }
   };
-const handleToggleVoice = () => {
-  if (listening) {
-    recognitionRef.current?.stop();
+
+  const handleToggleVoice = () => {
+    if (listening) {
+      recognitionRef.current?.stop();
+      onToggleVoice();
+      return;
+    }
+
+    const SpeechRecognition =
+      window.SpeechRecognition || window.webkitSpeechRecognition;
+
+    if (!SpeechRecognition) {
+      alert("Speech recognition is not supported in this browser.");
+      return;
+    }
+
+    const recognition = new SpeechRecognition();
+
+    recognition.lang = "en-IN";
+    recognition.continuous = false;
+    recognition.interimResults = false;
+
+    recognition.onresult = (event) => {
+      const transcript = event.results[0][0].transcript;
+      setCommand(transcript);
+    };
+
+    recognition.onend = () => {
+      onToggleVoice();
+      recognitionRef.current = null;
+    };
+
+    recognition.onerror = () => {
+      onToggleVoice();
+      recognitionRef.current = null;
+    };
+
+    recognitionRef.current = recognition;
     onToggleVoice();
-    return;
-  }
-
-  const SpeechRecognition =
-    window.SpeechRecognition || window.webkitSpeechRecognition;
-
-  if (!SpeechRecognition) {
-    alert("Speech recognition is not supported in this browser.");
-    return;
-  }
-
-  const recognition = new SpeechRecognition();
-
-  recognition.lang = "en-IN";
-  recognition.continuous = false;
-  recognition.interimResults = false;
-
-  recognition.onresult = (event) => {
-    const transcript = event.results[0][0].transcript;
-    setCommand(transcript);
+    recognition.start();
   };
 
-  recognition.onend = () => {
-    onToggleVoice();
-    recognitionRef.current = null;
-  };
-
-  recognition.onerror = () => {
-    onToggleVoice();
-    recognitionRef.current = null;
-  };
-
-  recognitionRef.current = recognition;
-  onToggleVoice();
-  recognition.start();
-};
   const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement>) => {
     if (event.key === "Enter") {
       handleSubmit();

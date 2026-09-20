@@ -1,20 +1,34 @@
 const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8000";
 
-export type CreateTaskRequest = {
+export type CommandRequest = {
   command: string;
 };
 
 export type TaskResponse = {
-  task_id: string;
+  id: string;
+  parent_task_id: string | null;
+  requester: string;
+  assigned_agent: string | null;
+  input: string;
   status: string;
-  message?: string;
+  priority: number;
+  created_at: string;
+  queued_at: string | null;
+  started_at: string | null;
+  completed_at: string | null;
+  result: Record<string, unknown> | null;
+  error: Record<string, unknown> | null;
 };
 
-export async function createTask(
-  payload: CreateTaskRequest,
-): Promise<TaskResponse> {
-  const response = await fetch(`${API_BASE_URL}/api/v1/tasks`, {
+export type CommandResponse = {
+  task: TaskResponse;
+};
+
+export async function submitCommand(
+  payload: CommandRequest,
+): Promise<CommandResponse> {
+  const response = await fetch(`${API_BASE_URL}/api/v1/commands`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -23,20 +37,41 @@ export async function createTask(
   });
 
   if (!response.ok) {
-    throw new Error(`Failed to create task: ${response.status}`);
+    throw new Error(`Failed to submit command: ${response.status}`);
   }
 
   return response.json();
 }
 
 export async function getTask(taskId: string): Promise<TaskResponse> {
-  const response = await fetch(`${API_BASE_URL}/api/v1/tasks/${taskId}`, {
-    method: "GET",
-    cache: "no-store",
-  });
+  const response = await fetch(
+    `${API_BASE_URL}/api/v1/tasks/${taskId}`,
+    {
+      method: "GET",
+      cache: "no-store",
+    },
+  );
 
   if (!response.ok) {
     throw new Error(`Failed to fetch task: ${response.status}`);
+  }
+
+  return response.json();
+}
+
+export async function getTaskEvents(
+  taskId: string,
+): Promise<Record<string, unknown>[]> {
+  const response = await fetch(
+    `${API_BASE_URL}/api/v1/tasks/${taskId}/events`,
+    {
+      method: "GET",
+      cache: "no-store",
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(`Failed to fetch task events: ${response.status}`);
   }
 
   return response.json();
